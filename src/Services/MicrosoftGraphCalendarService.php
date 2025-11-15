@@ -39,18 +39,44 @@ class MicrosoftGraphCalendarService
 
         // 3. Aus Datenbank (für Commands/Background-Jobs)
         $tokenModel = \Platform\Core\Models\MicrosoftOAuthToken::where('user_id', $user->id)->first();
-        if ($tokenModel && !$tokenModel->isExpired()) {
-            return $tokenModel->access_token;
-        }
-
-        // 4. Token Refresh versuchen (falls Refresh Token vorhanden)
-        if ($tokenModel && $tokenModel->refresh_token) {
-            $newToken = $this->refreshToken($user, $tokenModel);
-            if ($newToken) {
-                return $newToken;
+        
+        if ($tokenModel) {
+            Log::debug('Microsoft Graph: Token found in database', [
+                'user_id' => $user->id,
+                'expires_at' => $tokenModel->expires_at?->toIso8601String(),
+                'is_expired' => $tokenModel->isExpired(),
+                'has_refresh_token' => !empty($tokenModel->refresh_token),
+            ]);
+            
+            if (!$tokenModel->isExpired()) {
+                $token = $tokenModel->access_token;
+                if ($token) {
+                    Log::debug('Microsoft Graph: Using valid token from database', ['user_id' => $user->id]);
+                    return $token;
+                } else {
+                    Log::warning('Microsoft Graph: Token in DB but decryption failed', ['user_id' => $user->id]);
+                }
+            } else {
+                Log::info('Microsoft Graph: Token expired', [
+                    'user_id' => $user->id,
+                    'expires_at' => $tokenModel->expires_at?->toIso8601String(),
+                ]);
             }
+
+            // 4. Token Refresh versuchen (falls Refresh Token vorhanden)
+            if ($tokenModel->refresh_token) {
+                Log::info('Microsoft Graph: Attempting token refresh', ['user_id' => $user->id]);
+                $newToken = $this->refreshToken($user, $tokenModel);
+                if ($newToken) {
+                    Log::info('Microsoft Graph: Token refreshed successfully', ['user_id' => $user->id]);
+                    return $newToken;
+                }
+            }
+        } else {
+            Log::debug('Microsoft Graph: No token found in database', ['user_id' => $user->id]);
         }
 
+        Log::warning('Microsoft Graph: No valid token available', ['user_id' => $user->id]);
         return null;
     }
 
@@ -82,12 +108,59 @@ class MicrosoftGraphCalendarService
      */
     protected function refreshToken(User $user, \Platform\Core\Models\MicrosoftOAuthToken $tokenModel): ?string
     {
-        // TODO: Implementiere Token Refresh mit Microsoft OAuth
-        // Für jetzt: Return null (Token muss neu angefordert werden)
-        Log::warning('Microsoft Graph: Token refresh not yet implemented', [
-            'user_id' => $user->id,
-        ]);
-        return null;
+        if (!$tokenModel->refresh_token) {
+            Log::warning('Microsoft Graph: No refresh token available', ['user_id' => $user->id]);
+            return null;
+        }
+
+        try {
+            $tenant = config('services.microsoft.tenant', 'common');
+            $clientId = config('services.microsoft.client_id');
+            $clientSecret = config('services.microsoft.client_secret');
+
+            if (!$clientId || !$clientSecret) {
+                Log::error('Microsoft Graph: OAuth credentials not configured', ['user_id' => $user->id]);
+                return null;
+            }
+
+            $response = Http::asForm()->post("https://login.microsoftonline.com/{$tenant}/oauth2/v2.0/token", [
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+                'refresh_token' => $tokenModel->refresh_token,
+                'grant_type' => 'refresh_token',
+                'scope' => 'https://graph.microsoft.com/User.Read https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/Calendars.ReadWrite.Shared',
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('Microsoft Graph: Token refresh failed', [
+                    'user_id' => $user->id,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+                return null;
+            }
+
+            $data = $response->json();
+            $newAccessToken = $data['access_token'] ?? null;
+            $newRefreshToken = $data['refresh_token'] ?? $tokenModel->refresh_token; // Falls kein neuer Refresh Token, alten behalten
+            $expiresIn = $data['expires_in'] ?? 3600;
+
+            if (!$newAccessToken) {
+                Log::error('Microsoft Graph: No access token in refresh response', ['user_id' => $user->id]);
+                return null;
+            }
+
+            // Neuen Token speichern
+            $this->saveToken($user, $newAccessToken, $newRefreshToken, $expiresIn);
+
+            return $newAccessToken;
+        } catch (\Throwable $e) {
+            Log::error('Microsoft Graph: Exception during token refresh', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
     }
 
     /**
