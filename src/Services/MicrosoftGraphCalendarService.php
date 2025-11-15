@@ -635,5 +635,115 @@ class MicrosoftGraphCalendarService
             return $rooms;
         }
     }
+
+    /**
+     * Holt zukünftige Events aus Microsoft Calendar für einen User
+     */
+    public function getFutureEvents(User $user, ?Carbon $startDate = null, ?Carbon $endDate = null): array
+    {
+        $token = $this->getAccessToken($user);
+        if (!$token) {
+            Log::warning('Microsoft Graph: No access token for user', ['user_id' => $user->id]);
+            return [];
+        }
+
+        $startDate = $startDate ?? now();
+        $endDate = $endDate ?? now()->addMonths(3); // Standard: 3 Monate in die Zukunft
+
+        try {
+            $url = "{$this->baseUrl}/me/calendar/calendarView";
+            $params = [
+                'startDateTime' => $startDate->toIso8601String(),
+                'endDateTime' => $endDate->toIso8601String(),
+                '$orderby' => 'start/dateTime',
+                '$top' => 100, // Max 100 Events pro Request
+            ];
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $token,
+                'Content-Type' => 'application/json',
+            ])->get($url, $params);
+
+            if (!$response->successful()) {
+                Log::error('Microsoft Graph: Failed to get events', [
+                    'user_id' => $user->id,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+                return [];
+            }
+
+            $events = $response->json('value', []);
+
+            // Wenn es mehr Events gibt, weitere Seiten holen
+            $nextLink = $response->json('@odata.nextLink');
+            while ($nextLink) {
+                $nextResponse = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $token,
+                ])->get($nextLink);
+
+                if ($nextResponse->successful()) {
+                    $nextEvents = $nextResponse->json('value', []);
+                    $events = array_merge($events, $nextEvents);
+                    $nextLink = $nextResponse->json('@odata.nextLink');
+                } else {
+                    break;
+                }
+            }
+
+            return $events;
+        } catch (\Throwable $e) {
+            Log::error('Microsoft Graph: Exception getting events', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Holt alle Instanzen eines Recurring Events
+     */
+    public function getRecurringEventInstances(User $user, string $seriesMasterId, ?Carbon $startDate = null, ?Carbon $endDate = null): array
+    {
+        $token = $this->getAccessToken($user);
+        if (!$token) {
+            return [];
+        }
+
+        $startDate = $startDate ?? now();
+        $endDate = $endDate ?? now()->addMonths(3);
+
+        try {
+            $url = "{$this->baseUrl}/me/calendar/events/{$seriesMasterId}/instances";
+            $params = [
+                'startDateTime' => $startDate->toIso8601String(),
+                'endDateTime' => $endDate->toIso8601String(),
+                '$orderby' => 'start/dateTime',
+            ];
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $token,
+                'Content-Type' => 'application/json',
+            ])->get($url, $params);
+
+            if (!$response->successful()) {
+                Log::error('Microsoft Graph: Failed to get recurring event instances', [
+                    'user_id' => $user->id,
+                    'series_master_id' => $seriesMasterId,
+                    'status' => $response->status(),
+                ]);
+                return [];
+            }
+
+            return $response->json('value', []);
+        } catch (\Throwable $e) {
+            Log::error('Microsoft Graph: Exception getting recurring event instances', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
 }
 

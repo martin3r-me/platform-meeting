@@ -25,6 +25,7 @@ class MeetingsServiceProvider extends ServiceProvider
             $this->commands([
                 \Platform\Meetings\Console\Commands\GenerateRecurringMeetings::class,
                 \Platform\Meetings\Console\Commands\RenewCalendarSubscriptions::class,
+                \Platform\Meetings\Console\Commands\SyncCalendarEvents::class,
             ]);
         }
     }

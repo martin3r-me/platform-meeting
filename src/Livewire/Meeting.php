@@ -233,6 +233,7 @@ class Meeting extends Component
         $appointment = Appointment::create([
             'meeting_id' => $this->meeting->id,
             'user_id' => $this->createAppointment['user_id'],
+            'team_id' => $this->meeting->team_id,
             'sync_status' => 'pending',
         ]);
 
@@ -330,26 +331,6 @@ class Meeting extends Component
     {
         $user = Auth::user();
 
-        // Agenda Slots mit Items laden
-        $agendaSlots = $this->meeting->agendaSlots()
-            ->with(['agendaItems' => function ($query) {
-                $query->orderBy('order');
-            }])
-            ->get();
-
-        // Backlog (Items ohne Slot)
-        $backlogItems = $this->meeting->agendaItems()
-            ->whereNull('agenda_slot_id')
-            ->orderBy('order')
-            ->get();
-
-        // Done Slot
-        $doneSlot = $agendaSlots->firstWhere('is_done_slot', true);
-        $doneItems = $doneSlot ? $doneSlot->agendaItems : collect();
-
-        // Aktive Slots (ohne Done)
-        $activeSlots = $agendaSlots->reject(fn($slot) => $slot->is_done_slot);
-
         // Appointments laden
         $appointments = $this->meeting->appointments()
             ->with('user')
@@ -362,10 +343,6 @@ class Meeting extends Component
             ->get();
 
         return view('meetings::livewire.meeting', [
-            'agendaSlots' => $activeSlots,
-            'backlogItems' => $backlogItems,
-            'doneItems' => $doneItems,
-            'doneSlot' => $doneSlot,
             'activities' => $this->activities,
             'appointments' => $appointments,
             'teamMembers' => $teamMembers,

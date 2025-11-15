@@ -13,6 +13,7 @@ class MeetingAgendaSlot extends Model
 
     protected $fillable = [
         'meeting_id',
+        'appointment_id',
         'name',
         'order',
         'is_done_slot',
@@ -27,9 +28,14 @@ class MeetingAgendaSlot extends Model
         return $this->belongsTo(Meeting::class);
     }
 
+    public function appointment()
+    {
+        return $this->belongsTo(\Platform\Meetings\Models\Appointment::class);
+    }
+
     public function agendaItems()
     {
-        return $this->hasMany(MeetingAgendaItem::class)->orderBy('order');
+        return $this->hasMany(MeetingAgendaItem::class, 'agenda_slot_id')->orderBy('order');
     }
 }
 
