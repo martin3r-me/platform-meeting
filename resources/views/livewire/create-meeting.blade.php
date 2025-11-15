@@ -43,13 +43,14 @@
                                         const observer = new MutationObserver(() => {
                                             if (input.value) {
                                                 $wire.set('start_date', input.value);
-                                                $wire.call('updatedStartDate', input.value);
                                             }
                                         });
                                         observer.observe(input, { attributes: true, attributeFilter: ['value'] });
                                         input.addEventListener('input', () => {
                                             $wire.set('start_date', input.value);
-                                            $wire.call('updatedStartDate', input.value);
+                                        });
+                                        input.addEventListener('change', () => {
+                                            $wire.set('start_date', input.value);
                                         });
                                     }
                                 "></div>
@@ -69,13 +70,14 @@
                                         const observer = new MutationObserver(() => {
                                             if (input.value) {
                                                 $wire.set('end_date', input.value);
-                                                $wire.call('updatedEndDate', input.value);
                                             }
                                         });
                                         observer.observe(input, { attributes: true, attributeFilter: ['value'] });
                                         input.addEventListener('input', () => {
                                             $wire.set('end_date', input.value);
-                                            $wire.call('updatedEndDate', input.value);
+                                        });
+                                        input.addEventListener('change', () => {
+                                            $wire.set('end_date', input.value);
                                         });
                                     }
                                 "></div>
