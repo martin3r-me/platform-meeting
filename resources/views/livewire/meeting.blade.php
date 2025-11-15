@@ -301,11 +301,13 @@
                 required
             />
             <x-ui-input-datetime
+                name="createAppointment.start_date"
                 wire:model="createAppointment.start_date"
                 label="Startdatum & Zeit"
                 required
             />
             <x-ui-input-datetime
+                name="createAppointment.end_date"
                 wire:model="createAppointment.end_date"
                 label="Enddatum & Zeit"
                 required
