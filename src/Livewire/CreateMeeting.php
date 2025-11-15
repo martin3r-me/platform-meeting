@@ -34,28 +34,38 @@ class CreateMeeting extends Component
 
     public function updatedStartDate($value)
     {
+        // Konvertiere datetime-local Format (Y-m-d\TH:i) zu Y-m-d H:i:s
+        if ($value) {
+            $this->start_date = str_replace('T', ' ', $value) . ':00';
+        }
         $this->calculateEndDate();
-        $this->loadRooms();
     }
 
     public function updatedDurationMinutes($value)
     {
         $this->calculateEndDate();
-        
-        // Warte kurz, damit end_date gesetzt wird, dann lade Räume
-        if ($this->start_date && $this->end_date) {
-            $this->loadRooms();
-        }
     }
 
     public function calculateEndDate()
     {
         if ($this->start_date && $this->duration_minutes) {
             try {
-                $start = \Carbon\Carbon::parse($this->start_date);
+                // Konvertiere datetime-local Format falls nötig
+                $startValue = str_replace('T', ' ', $this->start_date);
+                if (!str_contains($startValue, ':')) {
+                    $startValue .= ' 00:00:00';
+                } elseif (substr_count($startValue, ':') === 1) {
+                    $startValue .= ':00';
+                }
+                
+                $start = \Carbon\Carbon::parse($startValue);
                 $this->end_date = $start->copy()->addMinutes($this->duration_minutes)->format('Y-m-d H:i:s');
             } catch (\Throwable $e) {
-                \Log::error('Failed to calculate end date', ['error' => $e->getMessage()]);
+                \Log::error('Failed to calculate end date', [
+                    'error' => $e->getMessage(),
+                    'start_date' => $this->start_date,
+                    'duration_minutes' => $this->duration_minutes,
+                ]);
             }
         }
     }
@@ -72,6 +82,10 @@ class CreateMeeting extends Component
 
     public function loadRooms()
     {
+        // Räume-Ladung vorerst deaktiviert - später implementieren
+        $this->rooms = [];
+        return;
+        
         // Enddatum berechnen, falls noch nicht gesetzt
         if (!$this->end_date && $this->start_date && $this->duration_minutes) {
             $this->calculateEndDate();
@@ -87,7 +101,14 @@ class CreateMeeting extends Component
             $calendarService = app(MicrosoftGraphCalendarService::class);
             
             // Format für Graph API: Y-m-d\TH:i:s
-            $startDateTime = \Carbon\Carbon::parse($this->start_date)->format('Y-m-d\TH:i:s');
+            $startValue = str_replace('T', ' ', $this->start_date);
+            if (!str_contains($startValue, ':')) {
+                $startValue .= ' 00:00:00';
+            } elseif (substr_count($startValue, ':') === 1) {
+                $startValue .= ':00';
+            }
+            
+            $startDateTime = \Carbon\Carbon::parse($startValue)->format('Y-m-d\TH:i:s');
             $endDateTime = \Carbon\Carbon::parse($this->end_date)->format('Y-m-d\TH:i:s');
             
             $this->rooms = $calendarService->findRooms($user, $startDateTime, $endDateTime);
@@ -102,19 +123,9 @@ class CreateMeeting extends Component
 
     protected function prepareForValidation($attributes)
     {
-        // Hole den Wert aus dem versteckten Input-Feld der Komponente, falls start_date leer ist
-        if (empty($this->start_date)) {
-            // Versuche aus dem Request zu holen
-            $startInput = request()->input('start_date');
-            if ($startInput) {
-                $this->start_date = $startInput;
-            } else {
-                // Versuche aus dem versteckten Input der Komponente zu holen
-                $componentInput = request()->input('start_date');
-                if ($componentInput) {
-                    $this->start_date = $componentInput;
-                }
-            }
+        // Konvertiere datetime-local Format zu Y-m-d H:i:s
+        if (!empty($this->start_date) && str_contains($this->start_date, 'T')) {
+            $this->start_date = str_replace('T', ' ', $this->start_date) . ':00';
         }
 
         // Enddatum berechnen, falls noch nicht gesetzt
@@ -127,30 +138,15 @@ class CreateMeeting extends Component
 
     public function save()
     {
-        // Hole den Wert aus dem versteckten Input-Feld der Komponente, falls start_date leer ist
-        if (empty($this->start_date)) {
-            // Versuche aus dem Request zu holen (vom versteckten Input der Komponente)
-            $startInput = request()->input('start_date');
-            if ($startInput) {
-                $this->start_date = $startInput;
-            }
+        // Konvertiere datetime-local Format zu Y-m-d H:i:s
+        if (!empty($this->start_date) && str_contains($this->start_date, 'T')) {
+            $this->start_date = str_replace('T', ' ', $this->start_date) . ':00';
         }
 
         // Enddatum berechnen, falls noch nicht gesetzt
         if (!$this->end_date && $this->start_date && $this->duration_minutes) {
             $this->calculateEndDate();
         }
-
-        // Debug: Log die Werte vor der Validierung
-        \Log::info('Meeting save attempt', [
-            'start_date' => $this->start_date,
-            'end_date' => $this->end_date,
-            'duration_minutes' => $this->duration_minutes,
-            'title' => $this->title,
-            'request_start_date' => request()->input('start_date'),
-            'request_end_date' => request()->input('end_date'),
-            'all_request_data' => request()->all(),
-        ]);
 
         // Wenn ein Raum ausgewählt wurde, verwende dessen Name als Location
         if ($this->location_type === 'room' && $this->selected_room_id) {
@@ -165,7 +161,15 @@ class CreateMeeting extends Component
         $user = Auth::user();
 
         // Datum-Strings in Carbon-Instanzen umwandeln
-        $startDate = \Carbon\Carbon::parse($this->start_date);
+        // Konvertiere falls nötig
+        $startValue = str_replace('T', ' ', $this->start_date);
+        if (!str_contains($startValue, ':')) {
+            $startValue .= ' 00:00:00';
+        } elseif (substr_count($startValue, ':') === 1) {
+            $startValue .= ':00';
+        }
+        
+        $startDate = \Carbon\Carbon::parse($startValue);
         $endDate = \Carbon\Carbon::parse($this->end_date);
 
         $meeting = Meeting::create([

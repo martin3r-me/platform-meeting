@@ -36,17 +36,19 @@
                             <div class="space-y-4">
                                 {{-- Startdatum/Zeit --}}
                                 <div>
-                                    <x-ui-input-datetime
-                                        name="start_date"
-                                        label="Startdatum & Zeit"
-                                        :value="$start_date"
+                                    <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-1">
+                                        Startdatum & Zeit <span class="text-[var(--ui-danger)]">*</span>
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        wire:model.live="start_date"
+                                        class="w-full rounded-md border border-[var(--ui-border)]/60 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--ui-primary)]/20 focus:border-[var(--ui-primary)]"
                                         required
-                                        :errorKey="'start_date'"
                                     />
+                                    @error('start_date')
+                                        <p class="mt-1 text-sm text-[var(--ui-danger)]">{{ $message }}</p>
+                                    @enderror
                                 </div>
-                                
-                                {{-- Verstecktes Input für Livewire-Bindung außerhalb der Komponente --}}
-                                <input type="hidden" wire:model="start_date" id="start_date_wire" />
                                 
                                 {{-- Dauer-Auswahl --}}
                                 <div>
@@ -115,85 +117,6 @@
                                 @endif
                             </div>
                         </div>
-                        
-                        @push('scripts')
-                        <script>
-                            document.addEventListener('DOMContentLoaded', function() {
-                                let startDateValue = null;
-                                
-                                function syncStartDate() {
-                                    const startInput = document.getElementById('start_date');
-                                    const wireInput = document.getElementById('start_date_wire');
-                                    
-                                    if (!startInput) return;
-                                    
-                                    if (startInput.value && startInput.value !== startDateValue) {
-                                        startDateValue = startInput.value;
-                                        
-                                        // Setze den Wert direkt über Livewire
-                                        @this.set('start_date', startInput.value, false).then(() => {
-                                            // Warte kurz, damit end_date berechnet werden kann
-                                            setTimeout(() => {
-                                                @this.call('loadRooms');
-                                            }, 200);
-                                        });
-                                        
-                                        // Falls wireInput existiert, synchronisiere auch dieses
-                                        if (wireInput) {
-                                            wireInput.value = startInput.value;
-                                            wireInput.dispatchEvent(new Event('input', { bubbles: true }));
-                                            wireInput.dispatchEvent(new Event('change', { bubbles: true }));
-                                        }
-                                        
-                                        // Auch das Original-Input synchronisieren
-                                        startInput.dispatchEvent(new Event('input', { bubbles: true }));
-                                        startInput.dispatchEvent(new Event('change', { bubbles: true }));
-                                    }
-                                }
-                                
-                                function setupStartDateBinding() {
-                                    const startInput = document.getElementById('start_date');
-                                    if (!startInput) return;
-                                    
-                                    // Event-Listener für input und change
-                                    startInput.addEventListener('input', syncStartDate);
-                                    startInput.addEventListener('change', syncStartDate);
-                                    
-                                    // MutationObserver für value-Änderungen
-                                    const observer = new MutationObserver(function(mutations) {
-                                        mutations.forEach(function(mutation) {
-                                            if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
-                                                syncStartDate();
-                                            }
-                                        });
-                                    });
-                                    
-                                    observer.observe(startInput, {
-                                        attributes: true,
-                                        attributeFilter: ['value']
-                                    });
-                                }
-                                
-                                // Initial setup
-                                setTimeout(() => {
-                                    setupStartDateBinding();
-                                    
-                                    // Prüfe ob Startdatum bereits gesetzt ist
-                                    syncStartDate();
-                                }, 300);
-                                
-                                // Nach Livewire-Updates
-                                document.addEventListener('livewire:init', () => {
-                                    Livewire.hook('morph.updated', () => {
-                                        setTimeout(() => {
-                                            setupStartDateBinding();
-                                            syncStartDate();
-                                        }, 200);
-                                    });
-                                });
-                            });
-                        </script>
-                        @endpush
 
                         {{-- Ort / Raum --}}
                         <div>
