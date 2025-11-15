@@ -13,6 +13,8 @@ class RecurringMeeting extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
+    protected $table = 'meetings_recurring_meetings';
+
     protected $fillable = [
         'uuid',
         'user_id',

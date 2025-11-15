@@ -8,7 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('microsoft_calendar_subscriptions', function (Blueprint $table) {
+        if (Schema::hasTable('meetings_microsoft_calendar_subscriptions')) {
+            return;
+        }
+
+        Schema::create('meetings_microsoft_calendar_subscriptions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             
@@ -27,7 +31,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('microsoft_calendar_subscriptions');
+        Schema::dropIfExists('meetings_microsoft_calendar_subscriptions');
     }
 };
 

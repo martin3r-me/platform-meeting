@@ -9,6 +9,8 @@ class MeetingAgendaSlot extends Model
 {
     use HasFactory;
 
+    protected $table = 'meetings_agenda_slots';
+
     protected $fillable = [
         'meeting_id',
         'name',

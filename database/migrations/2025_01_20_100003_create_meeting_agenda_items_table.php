@@ -8,10 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('meeting_agenda_items', function (Blueprint $table) {
+        if (Schema::hasTable('meetings_agenda_items')) {
+            return;
+        }
+
+        Schema::create('meetings_agenda_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('meeting_id')->constrained('meetings')->cascadeOnDelete();
-            $table->foreignId('agenda_slot_id')->nullable()->constrained('meeting_agenda_slots')->nullOnDelete();
+            $table->foreignId('meeting_id')->constrained('meetings_meetings')->cascadeOnDelete();
+            $table->foreignId('agenda_slot_id')->nullable()->constrained('meetings_agenda_slots')->nullOnDelete();
             $table->foreignId('assigned_to_id')->nullable()->constrained('users')->nullOnDelete();
             
             $table->string('title');
@@ -29,7 +33,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('meeting_agenda_items');
+        Schema::dropIfExists('meetings_agenda_items');
     }
 };
 

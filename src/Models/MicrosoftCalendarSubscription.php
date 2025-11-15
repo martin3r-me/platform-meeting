@@ -9,6 +9,8 @@ class MicrosoftCalendarSubscription extends Model
 {
     use HasFactory;
 
+    protected $table = 'meetings_microsoft_calendar_subscriptions';
+
     protected $fillable = [
         'user_id',
         'subscription_id',

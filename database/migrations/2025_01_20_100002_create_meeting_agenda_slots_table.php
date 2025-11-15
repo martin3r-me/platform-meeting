@@ -8,9 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('meeting_agenda_slots', function (Blueprint $table) {
+        if (Schema::hasTable('meetings_agenda_slots')) {
+            return;
+        }
+
+        Schema::create('meetings_agenda_slots', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('meeting_id')->constrained('meetings')->cascadeOnDelete();
+            $table->foreignId('meeting_id')->constrained('meetings_meetings')->cascadeOnDelete();
             $table->string('name');
             $table->integer('order')->default(0);
             $table->boolean('is_done_slot')->default(false);
@@ -22,7 +26,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('meeting_agenda_slots');
+        Schema::dropIfExists('meetings_agenda_slots');
     }
 };
 

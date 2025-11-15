@@ -8,9 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('appointments', function (Blueprint $table) {
+        if (Schema::hasTable('meetings_appointments')) {
+            return;
+        }
+
+        Schema::create('meetings_appointments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('meeting_id')->constrained('meetings')->cascadeOnDelete();
+            $table->foreignId('meeting_id')->constrained('meetings_meetings')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             
             // Microsoft Graph API
@@ -29,7 +33,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('appointments');
+        Schema::dropIfExists('meetings_appointments');
     }
 };
 

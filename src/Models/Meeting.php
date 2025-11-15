@@ -15,6 +15,8 @@ class Meeting extends Model implements HasDisplayName
 {
     use HasFactory, SoftDeletes, LogsActivity, HasMedia;
 
+    protected $table = 'meetings_meetings';
+
     protected $fillable = [
         'uuid',
         'user_id',

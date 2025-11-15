@@ -8,12 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('meetings', function (Blueprint $table) {
+        if (Schema::hasTable('meetings_meetings')) {
+            return;
+        }
+
+        Schema::create('meetings_meetings', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('team_id')->nullable()->constrained('teams')->nullOnDelete();
-            $table->foreignId('recurring_meeting_id')->nullable()->constrained('recurring_meetings')->nullOnDelete();
+            $table->foreignId('recurring_meeting_id')->nullable()->constrained('meetings_recurring_meetings')->nullOnDelete();
             
             $table->string('title');
             $table->text('description')->nullable();
@@ -39,7 +43,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('meetings');
+        Schema::dropIfExists('meetings_meetings');
     }
 };
 

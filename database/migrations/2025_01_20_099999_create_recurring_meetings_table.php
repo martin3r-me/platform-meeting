@@ -8,7 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('recurring_meetings', function (Blueprint $table) {
+        if (Schema::hasTable('meetings_recurring_meetings')) {
+            return;
+        }
+
+        Schema::create('meetings_recurring_meetings', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid')->unique();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
@@ -38,7 +42,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('recurring_meetings');
+        Schema::dropIfExists('meetings_recurring_meetings');
     }
 };
 

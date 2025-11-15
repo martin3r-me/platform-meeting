@@ -8,9 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('meeting_participants', function (Blueprint $table) {
+        if (Schema::hasTable('meetings_participants')) {
+            return;
+        }
+
+        Schema::create('meetings_participants', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('meeting_id')->constrained('meetings')->cascadeOnDelete();
+            $table->foreignId('meeting_id')->constrained('meetings_meetings')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             
             $table->string('role')->default('attendee'); // organizer, attendee, optional
@@ -30,7 +34,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('meeting_participants');
+        Schema::dropIfExists('meetings_participants');
     }
 };
 
