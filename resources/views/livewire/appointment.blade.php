@@ -211,6 +211,7 @@
                                                 type="number"
                                             />
                                             <x-ui-input-select
+                                                name="editingAgendaItem.assigned_to_id"
                                                 wire:model="editingAgendaItem.assigned_to_id"
                                                 label="Zugewiesen an"
                                                 :options="$teamMembers"
@@ -301,6 +302,7 @@
                                                 type="number"
                                             />
                                             <x-ui-input-select
+                                                name="editingAgendaItem.assigned_to_id"
                                                 wire:model="editingAgendaItem.assigned_to_id"
                                                 label="Zugewiesen an"
                                                 :options="$teamMembers"

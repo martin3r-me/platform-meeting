@@ -21,10 +21,73 @@ class MicrosoftGraphCalendarService
      */
     protected function getAccessToken(User $user): ?string
     {
-        // TODO: Token aus User-Modell oder OAuth-Token-Tabelle holen
-        // Für jetzt: Token aus Session/Request holen (wenn verfügbar)
-        return request()->header('X-Microsoft-Access-Token') 
-            ?? session('microsoft_access_token_' . $user->id);
+        // 1. Aus Request Header (für aktuelle Requests)
+        if (request()->hasHeader('X-Microsoft-Access-Token')) {
+            $token = request()->header('X-Microsoft-Access-Token');
+            // Token in DB speichern für zukünftige Verwendung
+            $this->saveToken($user, $token);
+            return $token;
+        }
+
+        // 2. Aus Session (für aktuelle Requests)
+        if (session()->has('microsoft_access_token_' . $user->id)) {
+            $token = session('microsoft_access_token_' . $user->id);
+            // Token in DB speichern für zukünftige Verwendung
+            $this->saveToken($user, $token);
+            return $token;
+        }
+
+        // 3. Aus Datenbank (für Commands/Background-Jobs)
+        $tokenModel = \Platform\Core\Models\MicrosoftOAuthToken::where('user_id', $user->id)->first();
+        if ($tokenModel && !$tokenModel->isExpired()) {
+            return $tokenModel->access_token;
+        }
+
+        // 4. Token Refresh versuchen (falls Refresh Token vorhanden)
+        if ($tokenModel && $tokenModel->refresh_token) {
+            $newToken = $this->refreshToken($user, $tokenModel);
+            if ($newToken) {
+                return $newToken;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Speichert Token in der Datenbank
+     */
+    protected function saveToken(User $user, string $token, ?string $refreshToken = null, ?int $expiresIn = null): void
+    {
+        try {
+            \Platform\Core\Models\MicrosoftOAuthToken::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'access_token' => $token,
+                    'refresh_token' => $refreshToken,
+                    'expires_at' => $expiresIn ? now()->addSeconds($expiresIn) : null,
+                    'scopes' => ['User.Read', 'Calendars.ReadWrite', 'Calendars.ReadWrite.Shared'],
+                ]
+            );
+        } catch (\Throwable $e) {
+            Log::error('Failed to save Microsoft OAuth token', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Aktualisiert Token mit Refresh Token
+     */
+    protected function refreshToken(User $user, \Platform\Core\Models\MicrosoftOAuthToken $tokenModel): ?string
+    {
+        // TODO: Implementiere Token Refresh mit Microsoft OAuth
+        // Für jetzt: Return null (Token muss neu angefordert werden)
+        Log::warning('Microsoft Graph: Token refresh not yet implemented', [
+            'user_id' => $user->id,
+        ]);
+        return null;
     }
 
     /**

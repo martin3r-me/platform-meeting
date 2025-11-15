@@ -290,6 +290,7 @@
     <x-ui-modal wire:model="showCreateAppointmentModal" title="Neuen Termin anlegen">
         <div class="space-y-4">
             <x-ui-input-select
+                name="createAppointment.user_id"
                 wire:model="createAppointment.user_id"
                 label="Teilnehmer"
                 :options="$teamMembers"
