@@ -1,0 +1,16 @@
+{
+  "name": "martin3r/platform-meetings",
+  "autoload": {
+    "psr-4": {
+      "Platform\\Meetings\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Platform\\Meetings\\MeetingsServiceProvider"
+      ]
+    }
+  }
+}
+
