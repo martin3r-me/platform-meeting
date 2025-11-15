@@ -23,11 +23,6 @@ return [
                     'icon'  => 'heroicon-o-home',
                 ],
                 [
-                    'label' => 'Meine Termine',
-                    'route' => 'meetings.my-appointments',
-                    'icon'  => 'heroicon-o-calendar-days',
-                ],
-                [
                     'label' => 'Meeting erstellen',
                     'route' => 'meetings.create',
                     'icon'  => 'heroicon-o-plus',

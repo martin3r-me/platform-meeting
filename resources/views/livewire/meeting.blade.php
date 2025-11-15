@@ -45,7 +45,8 @@
         </x-slot>
     </x-slot>
 
-    <div class="p-6">
+    <x-ui-page-container>
+        <div class="p-6">
         {{-- Beschreibung --}}
         @if($meeting->description)
             <div class="mb-6">
@@ -124,6 +125,6 @@
                 @endif
             </x-ui-kanban-container>
         </div>
-    </div>
+    </x-ui-page-container>
 </x-ui-page>
 

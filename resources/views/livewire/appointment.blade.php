@@ -3,7 +3,8 @@
         <x-ui-page-navbar title="Termin" icon="heroicon-o-calendar-days" />
     </x-slot>
 
-    <div class="p-6">
+    <x-ui-page-container>
+        <div class="p-6">
         <div class="max-w-2xl space-y-4">
             <div>
                 <h2 class="text-2xl font-bold">{{ $appointment->meeting->title }}</h2>
@@ -34,6 +35,6 @@
                 </div>
             </div>
         </div>
-    </div>
+    </x-ui-page-container>
 </x-ui-page>
 

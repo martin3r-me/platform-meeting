@@ -3,7 +3,8 @@
         <x-ui-page-navbar title="Meeting erstellen" icon="heroicon-o-plus" />
     </x-slot>
 
-    <div class="p-6 max-w-2xl">
+    <x-ui-page-container>
+        <div class="p-6 max-w-2xl">
         <form wire:submit="save">
             <div class="space-y-4">
                 <div>
@@ -54,6 +55,6 @@
                 </div>
             </div>
         </form>
-    </div>
+    </x-ui-page-container>
 </x-ui-page>
 

@@ -3,7 +3,8 @@
         <x-ui-page-navbar title="Meetings" icon="heroicon-o-calendar" />
     </x-slot>
 
-    <div class="p-6 space-y-6">
+    <x-ui-page-container>
+        <div class="p-6 space-y-6">
         {{-- Heute --}}
         @if($todayMeetings->count() > 0)
             <div>
@@ -72,6 +73,6 @@
                 @endforelse
             </div>
         </div>
-    </div>
+    </x-ui-page-container>
 </x-ui-page>
 
