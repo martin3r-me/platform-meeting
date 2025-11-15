@@ -43,9 +43,10 @@
                                         required
                                         :errorKey="'start_date'"
                                     />
-                                    {{-- Verstecktes Input für Livewire-Bindung --}}
-                                    <input type="hidden" wire:model="start_date" id="start_date_wire" />
                                 </div>
+                                
+                                {{-- Verstecktes Input für Livewire-Bindung außerhalb der Komponente --}}
+                                <input type="hidden" wire:model="start_date" id="start_date_wire" />
                                 
                                 {{-- Dauer-Auswahl --}}
                                 <div>
@@ -124,22 +125,29 @@
                                     const startInput = document.getElementById('start_date');
                                     const wireInput = document.getElementById('start_date_wire');
                                     
-                                    if (!startInput || !wireInput) return;
+                                    if (!startInput) return;
                                     
                                     if (startInput.value && startInput.value !== startDateValue) {
                                         startDateValue = startInput.value;
                                         
-                                        // Setze beide Inputs
-                                        wireInput.value = startInput.value;
+                                        // Setze den Wert direkt über Livewire
+                                        @this.set('start_date', startInput.value, false).then(() => {
+                                            // Warte kurz, damit end_date berechnet werden kann
+                                            setTimeout(() => {
+                                                @this.call('loadRooms');
+                                            }, 200);
+                                        });
                                         
-                                        // Trigger Livewire Update
-                                        wireInput.dispatchEvent(new Event('input', { bubbles: true }));
-                                        wireInput.dispatchEvent(new Event('change', { bubbles: true }));
+                                        // Falls wireInput existiert, synchronisiere auch dieses
+                                        if (wireInput) {
+                                            wireInput.value = startInput.value;
+                                            wireInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                            wireInput.dispatchEvent(new Event('change', { bubbles: true }));
+                                        }
                                         
-                                        // Warte kurz, damit end_date berechnet werden kann
-                                        setTimeout(() => {
-                                            @this.call('loadRooms');
-                                        }, 200);
+                                        // Auch das Original-Input synchronisieren
+                                        startInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                        startInput.dispatchEvent(new Event('change', { bubbles: true }));
                                     }
                                 }
                                 

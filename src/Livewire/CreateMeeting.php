@@ -100,8 +100,42 @@ class CreateMeeting extends Component
         }
     }
 
+    protected function prepareForValidation($attributes)
+    {
+        // Hole den Wert aus dem versteckten Input-Feld der Komponente, falls start_date leer ist
+        if (empty($this->start_date)) {
+            // Versuche aus dem Request zu holen
+            $startInput = request()->input('start_date');
+            if ($startInput) {
+                $this->start_date = $startInput;
+            } else {
+                // Versuche aus dem versteckten Input der Komponente zu holen
+                $componentInput = request()->input('start_date');
+                if ($componentInput) {
+                    $this->start_date = $componentInput;
+                }
+            }
+        }
+
+        // Enddatum berechnen, falls noch nicht gesetzt
+        if (!$this->end_date && $this->start_date && $this->duration_minutes) {
+            $this->calculateEndDate();
+        }
+
+        return $attributes;
+    }
+
     public function save()
     {
+        // Hole den Wert aus dem versteckten Input-Feld der Komponente, falls start_date leer ist
+        if (empty($this->start_date)) {
+            // Versuche aus dem Request zu holen (vom versteckten Input der Komponente)
+            $startInput = request()->input('start_date');
+            if ($startInput) {
+                $this->start_date = $startInput;
+            }
+        }
+
         // Enddatum berechnen, falls noch nicht gesetzt
         if (!$this->end_date && $this->start_date && $this->duration_minutes) {
             $this->calculateEndDate();
@@ -113,6 +147,9 @@ class CreateMeeting extends Component
             'end_date' => $this->end_date,
             'duration_minutes' => $this->duration_minutes,
             'title' => $this->title,
+            'request_start_date' => request()->input('start_date'),
+            'request_end_date' => request()->input('end_date'),
+            'all_request_data' => request()->all(),
         ]);
 
         // Wenn ein Raum ausgewählt wurde, verwende dessen Name als Location
