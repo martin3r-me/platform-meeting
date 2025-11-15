@@ -230,10 +230,16 @@ class Meeting extends Component
             'createAppointment.end_date' => 'required|date|after:createAppointment.start_date',
         ]);
 
+        $startDate = \Carbon\Carbon::parse($this->createAppointment['start_date']);
+        $endDate = \Carbon\Carbon::parse($this->createAppointment['end_date']);
+
         $appointment = Appointment::create([
             'meeting_id' => $this->meeting->id,
             'user_id' => $this->createAppointment['user_id'],
             'team_id' => $this->meeting->team_id,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'location' => $this->meeting->location, // Standard-Location vom Meeting
             'sync_status' => 'pending',
         ]);
 

@@ -16,7 +16,12 @@
                                 <div>
                                     <h3 class="font-medium">{{ $meeting->title }}</h3>
                                     <p class="text-sm text-[var(--ui-muted)]">
-                                        {{ $meeting->start_date->format('H:i') }} - {{ $meeting->end_date->format('H:i') }}
+                                        @php
+                                            $organizerAppointment = $meeting->appointments()->where('user_id', $meeting->user_id)->first();
+                                        @endphp
+                                        @if($organizerAppointment)
+                                            {{ $organizerAppointment->start_date->format('H:i') }} - {{ $organizerAppointment->end_date->format('H:i') }}
+                                        @endif
                                     </p>
                                 </div>
                                 @if($meeting->location)
@@ -39,7 +44,12 @@
                             <div>
                                 <h3 class="font-medium">{{ $meeting->title }}</h3>
                                 <p class="text-sm text-[var(--ui-muted)]">
-                                    {{ $meeting->start_date->format('d.m.Y H:i') }} - {{ $meeting->end_date->format('H:i') }}
+                                    @php
+                                        $organizerAppointment = $meeting->appointments()->where('user_id', $meeting->user_id)->first();
+                                    @endphp
+                                    @if($organizerAppointment)
+                                        {{ $organizerAppointment->start_date->format('d.m.Y H:i') }} - {{ $organizerAppointment->end_date->format('H:i') }}
+                                    @endif
                                 </p>
                             </div>
                             @if($meeting->location)
@@ -63,7 +73,12 @@
                             <div>
                                 <h3 class="font-medium">{{ $meeting->title }}</h3>
                                 <p class="text-sm text-[var(--ui-muted)]">
-                                    {{ $meeting->start_date->format('d.m.Y H:i') }} - {{ $meeting->end_date->format('H:i') }}
+                                    @php
+                                        $organizerAppointment = $meeting->appointments()->where('user_id', $meeting->user_id)->first();
+                                    @endphp
+                                    @if($organizerAppointment)
+                                        {{ $organizerAppointment->start_date->format('d.m.Y H:i') }} - {{ $organizerAppointment->end_date->format('H:i') }}
+                                    @endif
                                 </p>
                             </div>
                         </div>

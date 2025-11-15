@@ -13,30 +13,54 @@ class Dashboard extends Component
         $user = Auth::user();
         $team = $user->currentTeam;
 
-        // Upcoming Meetings
+        // Upcoming Meetings (gefiltert über Appointments)
         $upcomingMeetings = Meeting::where('team_id', $team->id)
-            ->where('start_date', '>=', now())
+            ->whereHas('appointments', function ($query) {
+                $query->where('start_date', '>=', now());
+            })
             ->where('status', '!=', 'cancelled')
-            ->orderBy('start_date')
-            ->limit(10)
-            ->get();
+            ->with(['appointments' => function ($query) {
+                $query->orderBy('start_date');
+            }])
+            ->get()
+            ->sortBy(function ($meeting) {
+                $firstAppointment = $meeting->appointments->first();
+                return $firstAppointment ? $firstAppointment->start_date : now()->addYear();
+            })
+            ->take(10);
 
-        // Today's Meetings
+        // Today's Meetings (gefiltert über Appointments)
         $todayMeetings = Meeting::where('team_id', $team->id)
-            ->whereDate('start_date', today())
+            ->whereHas('appointments', function ($query) {
+                $query->whereDate('start_date', today());
+            })
             ->where('status', '!=', 'cancelled')
-            ->orderBy('start_date')
-            ->get();
+            ->with(['appointments' => function ($query) {
+                $query->orderBy('start_date');
+            }])
+            ->get()
+            ->sortBy(function ($meeting) {
+                $firstAppointment = $meeting->appointments->first();
+                return $firstAppointment ? $firstAppointment->start_date : now()->addYear();
+            });
 
-        // My Meetings (where user is participant)
+        // My Meetings (where user is participant, gefiltert über Appointments)
         $myMeetings = Meeting::whereHas('participants', function ($query) use ($user) {
             $query->where('user_id', $user->id);
         })
-            ->where('start_date', '>=', now())
+            ->whereHas('appointments', function ($query) {
+                $query->where('start_date', '>=', now());
+            })
             ->where('status', '!=', 'cancelled')
-            ->orderBy('start_date')
-            ->limit(10)
-            ->get();
+            ->with(['appointments' => function ($query) {
+                $query->orderBy('start_date');
+            }])
+            ->get()
+            ->sortBy(function ($meeting) {
+                $firstAppointment = $meeting->appointments->first();
+                return $firstAppointment ? $firstAppointment->start_date : now()->addYear();
+            })
+            ->take(10);
 
         return view('meetings::livewire.dashboard', [
             'upcomingMeetings' => $upcomingMeetings,

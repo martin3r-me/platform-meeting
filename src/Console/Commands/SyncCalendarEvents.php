@@ -235,14 +235,12 @@ class SyncCalendarEvents extends Command
 
         DB::beginTransaction();
         try {
-            // Meeting erstellen
+            // Meeting erstellen (ohne konkrete Daten - die kommen in Appointments)
             $meeting = Meeting::create([
                 'user_id' => $user->id,
                 'team_id' => $teamId,
                 'title' => $event['subject'] ?? 'Ohne Titel',
                 'description' => $event['body']['content'] ?? $event['bodyPreview'] ?? null,
-                'start_date' => $startDateTime,
-                'end_date' => $endDateTime,
                 'location' => $event['location']['displayName'] ?? $event['location']['locationUri'] ?? null,
                 'status' => 'planned',
                 'microsoft_event_id' => $eventId,
@@ -258,9 +256,26 @@ class SyncCalendarEvents extends Command
                 'response_status' => 'accepted',
             ]);
 
+            // Appointment für Organizer erstellen (mit konkreten Daten)
+            Appointment::firstOrCreate(
+                [
+                    'meeting_id' => $meeting->id,
+                    'user_id' => $user->id,
+                ],
+                [
+                    'team_id' => $teamId,
+                    'start_date' => $startDateTime,
+                    'end_date' => $endDateTime,
+                    'location' => $meeting->location,
+                    'microsoft_event_id' => $eventId,
+                    'sync_status' => 'synced',
+                    'last_synced_at' => now(),
+                ]
+            );
+
             // Teilnehmer aus Event holen und als Participants/Appointments hinzufügen
             $attendees = $event['attendees'] ?? [];
-            $appointmentsCreated = 0;
+            $appointmentsCreated = 1; // Organizer bereits gezählt
 
             foreach ($attendees as $attendee) {
                 $attendeeEmail = $attendee['emailAddress']['address'] ?? null;
@@ -287,7 +302,7 @@ class SyncCalendarEvents extends Command
                     ]
                 );
 
-                // Appointment erstellen
+                // Appointment erstellen (mit konkreten Daten)
                 $appointment = Appointment::firstOrCreate(
                     [
                         'meeting_id' => $meeting->id,
@@ -295,6 +310,9 @@ class SyncCalendarEvents extends Command
                     ],
                     [
                         'team_id' => $teamId,
+                        'start_date' => $startDateTime,
+                        'end_date' => $endDateTime,
+                        'location' => $meeting->location,
                         'microsoft_event_id' => $eventId,
                         'sync_status' => 'synced',
                         'last_synced_at' => now(),
@@ -306,23 +324,7 @@ class SyncCalendarEvents extends Command
                 }
             }
 
-            // Auch für den Organizer ein Appointment erstellen
-            $organizerAppointment = Appointment::firstOrCreate(
-                [
-                    'meeting_id' => $meeting->id,
-                    'user_id' => $user->id,
-                ],
-                [
-                    'team_id' => $teamId,
-                    'microsoft_event_id' => $eventId,
-                    'sync_status' => 'synced',
-                    'last_synced_at' => now(),
-                ]
-            );
-
-            if ($organizerAppointment->wasRecentlyCreated) {
-                $appointmentsCreated++;
-            }
+            // organizerAppointment wurde bereits oben erstellt und gezählt
 
             DB::commit();
 

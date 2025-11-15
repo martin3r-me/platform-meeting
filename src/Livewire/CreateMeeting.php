@@ -172,14 +172,13 @@ class CreateMeeting extends Component
         $startDate = \Carbon\Carbon::parse($startValue);
         $endDate = \Carbon\Carbon::parse($this->end_date);
 
+        // Meeting erstellen (ohne konkrete Daten - die kommen in Appointments)
         $meeting = Meeting::create([
             'user_id' => $user->id,
             'team_id' => $user->currentTeam->id,
             'title' => $this->title,
             'description' => $this->description,
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-            'location' => $this->location,
+            'location' => $this->location, // Standard-Location
             'status' => 'planned',
         ]);
 
@@ -189,6 +188,17 @@ class CreateMeeting extends Component
             'user_id' => $user->id,
             'role' => 'organizer',
             'response_status' => 'accepted',
+        ]);
+
+        // Appointment für Organizer erstellen (mit konkreten Daten)
+        \Platform\Meetings\Models\Appointment::create([
+            'meeting_id' => $meeting->id,
+            'user_id' => $user->id,
+            'team_id' => $meeting->team_id,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'location' => $this->location, // Kann vom Meeting überschrieben werden
+            'sync_status' => 'pending',
         ]);
 
         // Weitere Teilnehmer hinzufügen (Organizer überspringen)
@@ -203,6 +213,17 @@ class CreateMeeting extends Component
                 'user_id' => $participantId,
                 'role' => 'attendee',
                 'response_status' => 'notResponded',
+            ]);
+
+            // Appointment für jeden Teilnehmer erstellen
+            \Platform\Meetings\Models\Appointment::create([
+                'meeting_id' => $meeting->id,
+                'user_id' => $participantId,
+                'team_id' => $meeting->team_id,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'location' => $this->location,
+                'sync_status' => 'pending',
             ]);
         }
 

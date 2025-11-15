@@ -40,7 +40,12 @@
                             <div class="flex-1 min-w-0 ml-2">
                                 <div class="truncate text-sm font-medium">{{ $meeting->title }}</div>
                                 <div class="text-xs text-[var(--ui-muted)]">
-                                    {{ $meeting->start_date->format('d.m.Y H:i') }}
+                                    @php
+                                        $organizerAppointment = $meeting->appointments()->where('user_id', $meeting->user_id)->first();
+                                    @endphp
+                                    @if($organizerAppointment)
+                                        {{ $organizerAppointment->start_date->format('d.m.Y H:i') }}
+                                    @endif
                                 </div>
                             </div>
                         </x-ui-sidebar-item>

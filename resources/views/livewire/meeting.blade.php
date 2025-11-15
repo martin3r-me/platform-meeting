@@ -41,20 +41,25 @@
                 <div>
                     <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider mb-4">Details</h3>
                     <div class="space-y-3">
-                        <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
-                            <div class="flex items-center gap-2">
-                                @svg('heroicon-o-calendar', 'w-4 h-4 text-[var(--ui-primary)]')
-                                <span class="text-sm text-[var(--ui-secondary)]">Start</span>
+                        @php
+                            $organizerAppointment = $meeting->appointments()->where('user_id', $meeting->user_id)->first();
+                        @endphp
+                        @if($organizerAppointment)
+                            <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
+                                <div class="flex items-center gap-2">
+                                    @svg('heroicon-o-calendar', 'w-4 h-4 text-[var(--ui-primary)]')
+                                    <span class="text-sm text-[var(--ui-secondary)]">Start</span>
+                                </div>
+                                <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $organizerAppointment->start_date->format('d.m.Y H:i') }}</span>
                             </div>
-                            <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $meeting->start_date->format('d.m.Y H:i') }}</span>
-                        </div>
-                        <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
-                            <div class="flex items-center gap-2">
-                                @svg('heroicon-o-clock', 'w-4 h-4 text-[var(--ui-primary)]')
-                                <span class="text-sm text-[var(--ui-secondary)]">Ende</span>
+                            <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
+                                <div class="flex items-center gap-2">
+                                    @svg('heroicon-o-clock', 'w-4 h-4 text-[var(--ui-primary)]')
+                                    <span class="text-sm text-[var(--ui-secondary)]">Ende</span>
+                                </div>
+                                <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $organizerAppointment->end_date->format('d.m.Y H:i') }}</span>
                             </div>
-                            <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $meeting->end_date->format('d.m.Y H:i') }}</span>
-                        </div>
+                        @endif
                         @if($meeting->location)
                             <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
                                 <div class="flex items-center gap-2">
@@ -207,7 +212,12 @@
                             <div class="flex flex-wrap items-center gap-6 text-sm text-[var(--ui-muted)]">
                                 <span class="flex items-center gap-2">
                                     @svg('heroicon-o-calendar', 'w-4 h-4')
-                                    <span>{{ $meeting->start_date->format('d.m.Y H:i') }} - {{ $meeting->end_date->format('H:i') }}</span>
+                                    @php
+                                        $organizerAppointment = $meeting->appointments()->where('user_id', $meeting->user_id)->first();
+                                    @endphp
+                                    @if($organizerAppointment)
+                                        <span>{{ $organizerAppointment->start_date->format('d.m.Y H:i') }} - {{ $organizerAppointment->end_date->format('H:i') }}</span>
+                                    @endif
                                 </span>
                                 @if($meeting->location)
                                     <span class="flex items-center gap-2">

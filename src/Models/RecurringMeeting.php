@@ -91,18 +91,28 @@ class RecurringMeeting extends Model
         $endDate = $this->next_meeting_date->copy();
         $endDate->setTimeFromTimeString($this->end_time);
 
+        // Meeting erstellen (ohne konkrete Daten - die kommen in Appointments)
         $meeting = Meeting::create([
             'user_id' => $this->user_id,
             'team_id' => $this->team_id,
             'recurring_meeting_id' => $this->id,
             'title' => $this->title,
             'description' => $this->description,
-            'start_date' => $startDate,
-            'end_date' => $endDate,
             'location' => $this->location,
             'status' => 'planned',
             'is_series_instance' => true,
             'microsoft_series_master_id' => $this->microsoft_series_master_id,
+        ]);
+
+        // Appointment für Organizer erstellen (mit konkreten Daten)
+        \Platform\Meetings\Models\Appointment::create([
+            'meeting_id' => $meeting->id,
+            'user_id' => $this->user_id,
+            'team_id' => $this->team_id,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+            'location' => $this->location,
+            'sync_status' => 'pending',
         ]);
 
         $this->calculateNextMeetingDate();

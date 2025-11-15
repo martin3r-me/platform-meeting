@@ -186,6 +186,19 @@ class MicrosoftGraphCalendarService
             return null;
         }
 
+        // Hole start_date/end_date vom ersten Appointment (Organizer)
+        $organizerAppointment = $meeting->appointments()
+            ->where('user_id', $organizer->id)
+            ->first();
+
+        if (!$organizerAppointment || !$organizerAppointment->start_date || !$organizerAppointment->end_date) {
+            Log::error('Microsoft Graph: No appointment with dates found for organizer', [
+                'meeting_id' => $meeting->id,
+                'user_id' => $organizer->id,
+            ]);
+            return null;
+        }
+
         $attendees = $meeting->participants()
             ->with('user')
             ->get()
@@ -207,15 +220,15 @@ class MicrosoftGraphCalendarService
                 'content' => $meeting->description ?? '',
             ],
             'start' => [
-                'dateTime' => $meeting->start_date->toIso8601String(),
+                'dateTime' => $organizerAppointment->start_date->toIso8601String(),
                 'timeZone' => config('app.timezone', 'Europe/Berlin'),
             ],
             'end' => [
-                'dateTime' => $meeting->end_date->toIso8601String(),
+                'dateTime' => $organizerAppointment->end_date->toIso8601String(),
                 'timeZone' => config('app.timezone', 'Europe/Berlin'),
             ],
-            'location' => $meeting->location ? [
-                'displayName' => $meeting->location,
+            'location' => $organizerAppointment->location ?? $meeting->location ? [
+                'displayName' => $organizerAppointment->location ?? $meeting->location,
             ] : null,
             'attendees' => $attendees,
             'isOrganizer' => true,
@@ -272,6 +285,19 @@ class MicrosoftGraphCalendarService
             return null;
         }
 
+        // Hole start_date/end_date vom ersten Appointment (Organizer)
+        $organizerAppointment = $meeting->appointments()
+            ->where('user_id', $organizer->id)
+            ->first();
+
+        if (!$organizerAppointment || !$organizerAppointment->start_date || !$organizerAppointment->end_date) {
+            Log::error('Microsoft Graph: No appointment with dates found for organizer', [
+                'meeting_id' => $meeting->id,
+                'user_id' => $organizer->id,
+            ]);
+            return null;
+        }
+
         $attendees = $meeting->participants()
             ->with('user')
             ->get()
@@ -293,15 +319,15 @@ class MicrosoftGraphCalendarService
                 'content' => $meeting->description ?? '',
             ],
             'start' => [
-                'dateTime' => $meeting->start_date->toIso8601String(),
+                'dateTime' => $organizerAppointment->start_date->toIso8601String(),
                 'timeZone' => config('app.timezone', 'Europe/Berlin'),
             ],
             'end' => [
-                'dateTime' => $meeting->end_date->toIso8601String(),
+                'dateTime' => $organizerAppointment->end_date->toIso8601String(),
                 'timeZone' => config('app.timezone', 'Europe/Berlin'),
             ],
-            'location' => $meeting->location ? [
-                'displayName' => $meeting->location,
+            'location' => $organizerAppointment->location ?? $meeting->location ? [
+                'displayName' => $organizerAppointment->location ?? $meeting->location,
             ] : null,
             'attendees' => $attendees,
         ];

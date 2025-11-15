@@ -16,6 +16,9 @@ class Appointment extends Model
         'meeting_id',
         'user_id',
         'team_id',
+        'start_date', // Konkreter Termin
+        'end_date', // Konkreter Termin
+        'location', // Optional: Überschreibt Meeting-Location
         'microsoft_event_id',
         'sync_status',
         'last_synced_at',
@@ -23,6 +26,8 @@ class Appointment extends Model
     ];
 
     protected $casts = [
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
         'last_synced_at' => 'datetime',
     ];
 

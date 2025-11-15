@@ -40,14 +40,14 @@
                                 @svg('heroicon-o-calendar', 'w-4 h-4 text-[var(--ui-primary)]')
                                 <span class="text-sm text-[var(--ui-secondary)]">Start</span>
                             </div>
-                            <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $appointment->meeting->start_date->format('d.m.Y H:i') }}</span>
+                            <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $appointment->start_date->format('d.m.Y H:i') }}</span>
                         </div>
                         <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
                             <div class="flex items-center gap-2">
                                 @svg('heroicon-o-clock', 'w-4 h-4 text-[var(--ui-primary)]')
                                 <span class="text-sm text-[var(--ui-secondary)]">Ende</span>
                             </div>
-                            <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $appointment->meeting->end_date->format('d.m.Y H:i') }}</span>
+                            <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $appointment->end_date->format('d.m.Y H:i') }}</span>
                         </div>
                         @if($appointment->meeting->location)
                             <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
@@ -144,7 +144,7 @@
                             <div class="flex flex-wrap items-center gap-6 text-sm text-[var(--ui-muted)]">
                                 <span class="flex items-center gap-2">
                                     @svg('heroicon-o-calendar', 'w-4 h-4')
-                                    <span>{{ $appointment->meeting->start_date->format('d.m.Y H:i') }} - {{ $appointment->meeting->end_date->format('H:i') }}</span>
+                                    <span>{{ $appointment->start_date->format('d.m.Y H:i') }} - {{ $appointment->end_date->format('H:i') }}</span>
                                 </span>
                                 @if($appointment->meeting->location)
                                     <span class="flex items-center gap-2">

@@ -19,13 +19,21 @@ class Sidebar extends Component
             ]);
         }
 
-        // Meetings des Teams
+        // Meetings des Teams (gefiltert über Appointments)
         $meetings = Meeting::where('team_id', $team->id)
-            ->where('start_date', '>=', now())
+            ->whereHas('appointments', function ($query) {
+                $query->where('start_date', '>=', now());
+            })
             ->where('status', '!=', 'cancelled')
-            ->orderBy('start_date')
-            ->limit(20)
-            ->get();
+            ->with(['appointments' => function ($query) {
+                $query->orderBy('start_date');
+            }])
+            ->get()
+            ->sortBy(function ($meeting) {
+                $firstAppointment = $meeting->appointments->first();
+                return $firstAppointment ? $firstAppointment->start_date : now()->addYear();
+            })
+            ->take(20);
 
         return view('meetings::livewire.sidebar', [
             'meetings' => $meetings,

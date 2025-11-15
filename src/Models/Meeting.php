@@ -24,20 +24,21 @@ class Meeting extends Model implements HasDisplayName
         'recurring_meeting_id',
         'title',
         'description',
-        'start_date',
-        'end_date',
-        'location',
+        'location', // Standard-Location (kann in Appointment überschrieben werden)
         'status',
         'microsoft_event_id',
         'microsoft_series_master_id',
         'is_series_instance',
         'microsoft_online_meeting_id',
+        // Recurring-Pattern (wenn Meeting eine Serie ist)
+        'recurrence_start_date', // Wann startet die Serie
+        'recurrence_end_date', // Wann endet die Serie (optional)
     ];
 
     protected $casts = [
-        'start_date' => 'datetime',
-        'end_date' => 'datetime',
         'is_series_instance' => 'boolean',
+        'recurrence_start_date' => 'datetime',
+        'recurrence_end_date' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -79,15 +80,7 @@ class Meeting extends Model implements HasDisplayName
         return $this->hasMany(MeetingParticipant::class);
     }
 
-    public function agendaSlots()
-    {
-        return $this->hasMany(MeetingAgendaSlot::class)->orderBy('order');
-    }
-
-    public function agendaItems()
-    {
-        return $this->hasMany(MeetingAgendaItem::class)->orderBy('order');
-    }
+    // Agenda gehört jetzt zu Appointments, nicht mehr direkt zu Meetings
 
     public function appointments()
     {
