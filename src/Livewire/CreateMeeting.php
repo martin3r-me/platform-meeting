@@ -68,6 +68,11 @@ class CreateMeeting extends Component
 
     public function loadRooms()
     {
+        // Enddatum berechnen, falls noch nicht gesetzt
+        if (!$this->end_date && $this->start_date && $this->duration_minutes) {
+            $this->calculateEndDate();
+        }
+
         if (!$this->start_date || !$this->end_date) {
             $this->rooms = [];
             return;
@@ -83,13 +88,21 @@ class CreateMeeting extends Component
             
             $this->rooms = $calendarService->findRooms($user, $startDateTime, $endDateTime);
         } catch (\Throwable $e) {
-            \Log::error('Failed to load rooms', ['error' => $e->getMessage()]);
+            \Log::error('Failed to load rooms', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             $this->rooms = [];
         }
     }
 
     public function save()
     {
+        // Enddatum berechnen, falls noch nicht gesetzt
+        if (!$this->end_date && $this->start_date && $this->duration_minutes) {
+            $this->calculateEndDate();
+        }
+
         // Wenn ein Raum ausgewählt wurde, verwende dessen Name als Location
         if ($this->location_type === 'room' && $this->selected_room_id) {
             $room = collect($this->rooms)->firstWhere('email', $this->selected_room_id);

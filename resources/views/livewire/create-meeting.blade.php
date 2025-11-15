@@ -6,7 +6,7 @@
     <x-ui-page-container spacing="space-y-6">
         <div class="bg-white rounded-xl border border-[var(--ui-border)]/60 shadow-sm overflow-hidden">
             <div class="p-6 lg:p-8">
-                <form wire:submit.prevent="save">
+                <form wire:submit.prevent="save" onsubmit="return false;">
                     <x-ui-form-grid :cols="1" :gap="6">
                         {{-- Titel --}}
                         <x-ui-input-text
@@ -113,13 +113,21 @@
                         @push('scripts')
                         <script>
                             document.addEventListener('DOMContentLoaded', function() {
+                                let startDateValue = null;
+                                
                                 function setupStartDateBinding() {
                                     const startInput = document.getElementById('start_date');
                                     if (!startInput) return;
                                     
                                     const handler = function(e) {
-                                        if (startInput.value) {
-                                            @this.set('start_date', startInput.value, false);
+                                        if (startInput.value && startInput.value !== startDateValue) {
+                                            startDateValue = startInput.value;
+                                            @this.set('start_date', startInput.value, false).then(() => {
+                                                // Warte kurz, damit end_date berechnet werden kann
+                                                setTimeout(() => {
+                                                    @this.call('loadRooms');
+                                                }, 100);
+                                            });
                                         }
                                     };
                                     
@@ -130,8 +138,13 @@
                                     const observer = new MutationObserver(function(mutations) {
                                         mutations.forEach(function(mutation) {
                                             if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
-                                                if (startInput.value) {
-                                                    @this.set('start_date', startInput.value, false);
+                                                if (startInput.value && startInput.value !== startDateValue) {
+                                                    startDateValue = startInput.value;
+                                                    @this.set('start_date', startInput.value, false).then(() => {
+                                                        setTimeout(() => {
+                                                            @this.call('loadRooms');
+                                                        }, 100);
+                                                    });
                                                 }
                                             }
                                         });
@@ -150,8 +163,11 @@
                                     // Prüfe ob Startdatum gesetzt ist und lade dann Räume
                                     const startInput = document.getElementById('start_date');
                                     if (startInput?.value) {
+                                        startDateValue = startInput.value;
                                         @this.set('start_date', startInput.value, false).then(() => {
-                                            @this.call('loadRooms');
+                                            setTimeout(() => {
+                                                @this.call('loadRooms');
+                                            }, 100);
                                         });
                                     }
                                 }, 300);
@@ -210,15 +226,21 @@
                                 {{-- Raum-Auswahl --}}
                                 @if($location_type === 'room')
                                     <div>
-                                        @if(empty($rooms) && $start_date && $end_date)
-                                            <div class="text-sm text-[var(--ui-muted)] p-3 bg-[var(--ui-muted-5)] rounded-md">
-                                                Lade Räume...
+                                        @if(empty($rooms) && $start_date)
+                                            @if(!$end_date)
+                                                <div class="text-sm text-[var(--ui-muted)] p-3 bg-[var(--ui-muted-5)] rounded-md">
+                                                    Bitte zuerst Startzeit und Dauer auswählen, um verfügbare Räume zu sehen.
+                                                </div>
+                                            @else
+                                                <div class="text-sm text-[var(--ui-muted)] p-3 bg-[var(--ui-muted-5)] rounded-md">
+                                                    Lade Räume...
+                                                </div>
+                                            @endif
+                                        @elseif(empty($rooms) && $start_date && $end_date)
+                                            <div class="text-sm text-[var(--ui-warning)] p-3 bg-[var(--ui-warning-5)] rounded-md border border-[var(--ui-warning)]/30">
+                                                Keine Räume gefunden oder Fehler beim Laden. Bitte versuche es erneut oder wähle einen Ort manuell.
                                             </div>
-                                        @elseif(empty($rooms))
-                                            <div class="text-sm text-[var(--ui-muted)] p-3 bg-[var(--ui-muted-5)] rounded-md">
-                                                Bitte zuerst Start- und Endzeit auswählen, um verfügbare Räume zu sehen.
-                                            </div>
-                                        @else
+                                        @elseif(!empty($rooms))
                                             <div class="space-y-2 max-h-64 overflow-y-auto border border-[var(--ui-border)]/60 rounded-md p-3">
                                                 @foreach($rooms as $room)
                                                     <label class="flex items-center gap-3 p-2 rounded-md hover:bg-[var(--ui-muted-5)] cursor-pointer {{ $selected_room_id === $room['email'] ? 'bg-[var(--ui-primary-5)] border border-[var(--ui-primary)]' : '' }}">
@@ -315,13 +337,17 @@
 
                         {{-- Buttons --}}
                         <div class="flex items-center gap-3 pt-4 border-t border-[var(--ui-border)]/60">
-                            <x-ui-button type="submit" variant="primary">
-                                Meeting erstellen
+                            <x-ui-button type="button" wire:click="save" variant="primary" wire:loading.attr="disabled">
+                                <span wire:loading.remove wire:target="save">Meeting erstellen</span>
+                                <span wire:loading wire:target="save">Wird erstellt...</span>
                             </x-ui-button>
                             <x-ui-button type="button" variant="secondary" :href="route('meetings.dashboard')" wire:navigate>
                                 Abbrechen
                             </x-ui-button>
                         </div>
+                        
+                        {{-- Verstecktes end_date Input für Validierung --}}
+                        <input type="hidden" wire:model="end_date" />
                     </x-ui-form-grid>
                 </form>
             </div>
