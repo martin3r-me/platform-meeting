@@ -25,7 +25,7 @@ return new class extends Migration
             
             $table->timestamps();
             
-            $table->index(['user_id', 'expiration_date_time']);
+            $table->index(['user_id', 'expiration_date_time'], 'meetings_cal_subs_user_exp_idx');
         });
     }
 
