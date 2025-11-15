@@ -75,7 +75,7 @@ class CreateMeeting extends Component
 
         return view('meetings::livewire.create-meeting', [
             'teamMembers' => $teamMembers,
-        ]);
+        ])->layout('platform::layouts.app');
     }
 }
 

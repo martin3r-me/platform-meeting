@@ -143,7 +143,7 @@ class Meeting extends Component
             'backlogItems' => $backlogItems,
             'doneItems' => $doneItems,
             'doneSlot' => $doneSlot,
-        ]);
+        ])->layout('platform::layouts.app');
     }
 }
 

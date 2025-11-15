@@ -42,7 +42,7 @@ class Dashboard extends Component
             'upcomingMeetings' => $upcomingMeetings,
             'todayMeetings' => $todayMeetings,
             'myMeetings' => $myMeetings,
-        ]);
+        ])->layout('platform::layouts.app');
     }
 }
 

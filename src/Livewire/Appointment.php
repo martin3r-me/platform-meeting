@@ -18,7 +18,7 @@ class Appointment extends Component
 
     public function render()
     {
-        return view('meetings::livewire.appointment');
+        return view('meetings::livewire.appointment')->layout('platform::layouts.app');
     }
 }
 
