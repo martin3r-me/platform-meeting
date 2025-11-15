@@ -49,6 +49,28 @@
                         @push('scripts')
                         <script>
                             document.addEventListener('DOMContentLoaded', function() {
+                                let startDateValue = null;
+                                let endDateValue = null;
+                                
+                                function checkAndLoadRooms() {
+                                    const startInput = document.getElementById('start_date');
+                                    const endInput = document.getElementById('end_date');
+                                    
+                                    if (startInput?.value && endInput?.value) {
+                                        // Prüfe ob sich die Werte geändert haben
+                                        if (startInput.value !== startDateValue || endInput.value !== endDateValue) {
+                                            startDateValue = startInput.value;
+                                            endDateValue = endInput.value;
+                                            
+                                            // Setze die Livewire-Properties und lade dann Räume
+                                            @this.set('start_date', startInput.value, false);
+                                            @this.set('end_date', endInput.value, false).then(() => {
+                                                @this.call('loadRooms');
+                                            });
+                                        }
+                                    }
+                                }
+                                
                                 function setupDateTimeBinding(inputId, propertyName) {
                                     const input = document.getElementById(inputId);
                                     if (!input) return;
@@ -56,7 +78,7 @@
                                     // Höre auf input und change Events
                                     const handler = function(e) {
                                         if (input.value) {
-                                            @this.set(propertyName, input.value);
+                                            checkAndLoadRooms();
                                         }
                                     };
                                     
@@ -68,7 +90,7 @@
                                         mutations.forEach(function(mutation) {
                                             if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
                                                 if (input.value) {
-                                                    @this.set(propertyName, input.value);
+                                                    checkAndLoadRooms();
                                                 }
                                             }
                                         });
@@ -84,6 +106,9 @@
                                 setTimeout(() => {
                                     setupDateTimeBinding('start_date', 'start_date');
                                     setupDateTimeBinding('end_date', 'end_date');
+                                    
+                                    // Prüfe ob beide Werte bereits gesetzt sind
+                                    checkAndLoadRooms();
                                 }, 300);
                                 
                                 // Nach Livewire-Updates
@@ -92,6 +117,7 @@
                                         setTimeout(() => {
                                             setupDateTimeBinding('start_date', 'start_date');
                                             setupDateTimeBinding('end_date', 'end_date');
+                                            checkAndLoadRooms();
                                         }, 200);
                                     });
                                 });
