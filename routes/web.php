@@ -3,6 +3,7 @@
 use Platform\Meetings\Livewire\Dashboard;
 use Platform\Meetings\Livewire\Meeting;
 use Platform\Meetings\Livewire\Appointment;
+use Platform\Meetings\Livewire\AgendaItem;
 use Platform\Meetings\Livewire\CreateMeeting;
 use Platform\Meetings\Models\Meeting as MeetingModel;
 
@@ -14,4 +15,7 @@ Route::get('/meetings/{meeting}', Meeting::class)
 
 Route::get('/appointments/{appointment}', Appointment::class)
     ->name('meetings.appointments.show');
+
+Route::get('/agenda-items/{agendaItem}', AgendaItem::class)
+    ->name('meetings.agenda-items.show');
 

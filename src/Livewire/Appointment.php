@@ -193,6 +193,45 @@ class Appointment extends Component
         return collect();
     }
 
+    #[Computed]
+    public function agendaStats()
+    {
+        $allItems = $this->appointment->agendaItems;
+        
+        return [
+            [
+                'title' => 'Offen',
+                'count' => $allItems->where('status', 'todo')->count(),
+                'icon' => 'clock',
+                'variant' => 'warning'
+            ],
+            [
+                'title' => 'In Progress',
+                'count' => $allItems->where('status', 'in_progress')->count(),
+                'icon' => 'arrow-path',
+                'variant' => 'primary'
+            ],
+            [
+                'title' => 'Erledigt',
+                'count' => $allItems->where('status', 'done')->count(),
+                'icon' => 'check-circle',
+                'variant' => 'success'
+            ],
+            [
+                'title' => 'Gesamt',
+                'count' => $allItems->count(),
+                'icon' => 'document-text',
+                'variant' => 'secondary'
+            ],
+            [
+                'title' => 'Ohne Verantwortung',
+                'count' => $allItems->whereNull('assigned_to_id')->count(),
+                'icon' => 'user',
+                'variant' => 'muted'
+            ],
+        ];
+    }
+
     public function render()
     {
         $user = Auth::user();
@@ -229,6 +268,7 @@ class Appointment extends Component
             'doneSlot' => $doneSlot,
             'activities' => $this->activities,
             'teamMembers' => $teamMembers,
+            'agendaStats' => $this->agendaStats,
         ])->layout('platform::layouts.app');
     }
 }
