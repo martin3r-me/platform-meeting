@@ -71,7 +71,7 @@ class CreateMeeting extends Component
     public function render()
     {
         $user = Auth::user();
-        $teamMembers = $user->currentTeam->allUsers();
+        $teamMembers = $user->currentTeam->users()->orderBy('name')->get();
 
         return view('meetings::livewire.create-meeting', [
             'teamMembers' => $teamMembers,
