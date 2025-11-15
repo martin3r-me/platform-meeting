@@ -100,7 +100,8 @@ class MicrosoftGraphCalendarService
                     'access_token' => $token,
                     'refresh_token' => $refreshToken,
                     'expires_at' => $expiresIn ? now()->addSeconds($expiresIn) : null,
-                    'scopes' => ['User.Read', 'Calendars.ReadWrite', 'Calendars.ReadWrite.Shared'],
+                    // TODO: Calendar-Scopes am Montag wieder hinzufügen
+                    'scopes' => ['User.Read'],
                 ]
             );
         } catch (\Throwable $e) {
@@ -136,7 +137,8 @@ class MicrosoftGraphCalendarService
                 'client_secret' => $clientSecret,
                 'refresh_token' => $tokenModel->refresh_token,
                 'grant_type' => 'refresh_token',
-                'scope' => 'https://graph.microsoft.com/User.Read https://graph.microsoft.com/Calendars.ReadWrite https://graph.microsoft.com/Calendars.ReadWrite.Shared',
+                // TODO: Calendar-Scopes am Montag wieder hinzufügen
+                'scope' => 'https://graph.microsoft.com/User.Read',
             ]);
 
             if (!$response->successful()) {

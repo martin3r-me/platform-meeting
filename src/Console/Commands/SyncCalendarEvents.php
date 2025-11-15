@@ -64,16 +64,17 @@ class SyncCalendarEvents extends Command
                 
                 // Prüfe Token-Status
                 $scopes = $tokenModel->scopes ?? [];
-                $hasCalendarScope = in_array('Calendars.ReadWrite', $scopes) || 
-                                   in_array('Calendars.Read', $scopes) || 
-                                   in_array('Calendars.ReadWrite.Shared', $scopes);
-                
-                if (!$hasCalendarScope) {
-                    $this->warn("  → Token hat keine Calendar-Scopes!");
-                    $this->line("     Aktuelle Scopes: " . implode(', ', $scopes ?: ['Keine']));
-                    $this->line("     User muss sich einmal über Azure SSO neu einloggen, um Calendar-Scopes zu erhalten.");
-                    continue;
-                }
+                // TODO: Calendar-Scope-Prüfung am Montag wieder aktivieren
+                // $hasCalendarScope = in_array('Calendars.ReadWrite', $scopes) || 
+                //                    in_array('Calendars.Read', $scopes) || 
+                //                    in_array('Calendars.ReadWrite.Shared', $scopes);
+                // 
+                // if (!$hasCalendarScope) {
+                //     $this->warn("  → Token hat keine Calendar-Scopes!");
+                //     $this->line("     Aktuelle Scopes: " . implode(', ', $scopes ?: ['Keine']));
+                //     $this->line("     User muss sich einmal über Azure SSO neu einloggen, um Calendar-Scopes zu erhalten.");
+                //     continue;
+                // }
                 
                 if ($tokenModel->isExpired()) {
                     if ($tokenModel->refresh_token) {
