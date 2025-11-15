@@ -8,6 +8,7 @@ use Platform\Meetings\Models\Meeting as MeetingModel;
 use Platform\Meetings\Models\MeetingAgendaSlot;
 use Platform\Meetings\Models\MeetingAgendaItem;
 use Livewire\Attributes\On;
+use Livewire\Attributes\Computed;
 
 class Meeting extends Component
 {
@@ -114,6 +115,89 @@ class Meeting extends Component
         $this->dispatch('agendaSlotUpdated');
     }
 
+    #[Computed]
+    public function activities()
+    {
+        if (!$this->meeting) {
+            return collect();
+        }
+
+        return $this->meeting->activities()
+            ->with('user')
+            ->limit(10)
+            ->get()
+            ->map(function ($activity) {
+                $title = $this->formatActivityTitle($activity);
+                $time = $activity->created_at->diffForHumans();
+                
+                return [
+                    'id' => $activity->id,
+                    'title' => $title,
+                    'time' => $time,
+                    'user' => $activity->user?->name ?? 'System',
+                    'type' => $activity->activity_type,
+                    'name' => $activity->name,
+                ];
+            });
+    }
+
+    private function formatActivityTitle($activity): string
+    {
+        $userName = $activity->user?->name ?? 'System';
+        $activityName = $activity->name;
+        
+        // Übersetze Activity-Namen
+        $translations = [
+            'created' => 'erstellt',
+            'updated' => 'aktualisiert',
+            'deleted' => 'gelöscht',
+            'manual' => 'hat eine Nachricht hinzugefügt',
+        ];
+        
+        $translatedName = $translations[$activityName] ?? $activityName;
+        
+        // Wenn es eine Nachricht gibt, zeige diese
+        if ($activity->message) {
+            return "{$userName}: {$activity->message}";
+        }
+        
+        // Wenn es Änderungen gibt, zeige diese
+        if ($activity->properties && !empty($activity->properties)) {
+            $props = $activity->properties;
+            $changedFields = [];
+            
+            // Prüfe ob es old/new gibt (strukturierte Properties)
+            if (isset($props['old']) || isset($props['new'])) {
+                if (isset($props['old']) && isset($props['new'])) {
+                    $changedFields = array_keys($props['new']);
+                } elseif (isset($props['new'])) {
+                    $changedFields = array_keys($props['new']);
+                }
+            } else {
+                // Direkte Properties (z.B. bei created)
+                $changedFields = array_keys($props);
+            }
+            
+            if (!empty($changedFields)) {
+                $fieldNames = array_map(function($field) {
+                    $translations = [
+                        'title' => 'Titel',
+                        'description' => 'Beschreibung',
+                        'start_date' => 'Startdatum',
+                        'end_date' => 'Enddatum',
+                        'location' => 'Ort',
+                        'status' => 'Status',
+                    ];
+                    return $translations[$field] ?? $field;
+                }, $changedFields);
+                
+                return "{$userName} hat " . implode(', ', $fieldNames) . " {$translatedName}";
+            }
+        }
+        
+        return "{$userName} hat das Meeting {$translatedName}";
+    }
+
     public function render()
     {
         $user = Auth::user();
@@ -143,6 +227,7 @@ class Meeting extends Component
             'backlogItems' => $backlogItems,
             'doneItems' => $doneItems,
             'doneSlot' => $doneSlot,
+            'activities' => $this->activities,
         ])->layout('platform::layouts.app');
     }
 }

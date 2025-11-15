@@ -18,15 +18,17 @@ class CreateMeeting extends Component
     public $participant_ids = [];
     public $sync_to_calendar = true;
 
+    protected $rules = [
+        'title' => 'required|string|max:255',
+        'start_date' => 'required|date',
+        'end_date' => 'required|date|after:start_date',
+        'location' => 'nullable|string|max:255',
+        'participant_ids' => 'array',
+    ];
+
     public function save()
     {
-        $this->validate([
-            'title' => 'required|string|max:255',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
-            'location' => 'nullable|string|max:255',
-            'participant_ids' => 'array',
-        ]);
+        $this->validate();
 
         $user = Auth::user();
 
@@ -71,7 +73,17 @@ class CreateMeeting extends Component
     public function render()
     {
         $user = Auth::user();
-        $teamMembers = $user->currentTeam->users()->orderBy('name')->get();
+        $teamMembers = $user->currentTeam->users()
+            ->orderBy('name')
+            ->get()
+            ->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->fullname ?? $user->name,
+                    'email' => $user->email,
+                ];
+            })
+            ->values();
 
         return view('meetings::livewire.create-meeting', [
             'teamMembers' => $teamMembers,
