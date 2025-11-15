@@ -41,7 +41,11 @@ class CreateMeeting extends Component
     public function updatedDurationMinutes($value)
     {
         $this->calculateEndDate();
-        $this->loadRooms();
+        
+        // Warte kurz, damit end_date gesetzt wird, dann lade Räume
+        if ($this->start_date && $this->end_date) {
+            $this->loadRooms();
+        }
     }
 
     public function calculateEndDate()
@@ -102,6 +106,14 @@ class CreateMeeting extends Component
         if (!$this->end_date && $this->start_date && $this->duration_minutes) {
             $this->calculateEndDate();
         }
+
+        // Debug: Log die Werte vor der Validierung
+        \Log::info('Meeting save attempt', [
+            'start_date' => $this->start_date,
+            'end_date' => $this->end_date,
+            'duration_minutes' => $this->duration_minutes,
+            'title' => $this->title,
+        ]);
 
         // Wenn ein Raum ausgewählt wurde, verwende dessen Name als Location
         if ($this->location_type === 'room' && $this->selected_room_id) {

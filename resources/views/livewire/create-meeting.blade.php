@@ -35,13 +35,17 @@
                             
                             <div class="space-y-4">
                                 {{-- Startdatum/Zeit --}}
-                                <x-ui-input-datetime
-                                    name="start_date"
-                                    label="Startdatum & Zeit"
-                                    :value="$start_date"
-                                    required
-                                    :errorKey="'start_date'"
-                                />
+                                <div>
+                                    <x-ui-input-datetime
+                                        name="start_date"
+                                        label="Startdatum & Zeit"
+                                        :value="$start_date"
+                                        required
+                                        :errorKey="'start_date'"
+                                    />
+                                    {{-- Verstecktes Input für Livewire-Bindung --}}
+                                    <input type="hidden" wire:model="start_date" id="start_date_wire" />
+                                </div>
                                 
                                 {{-- Dauer-Auswahl --}}
                                 <div>
@@ -69,6 +73,7 @@
                                             <button
                                                 type="button"
                                                 wire:click="$set('duration_minutes', {{ $minutes }})"
+                                                wire:loading.attr="disabled"
                                                 class="px-4 py-2.5 rounded-lg border-2 font-medium text-sm transition-all duration-200 hover:scale-105 {{ $isSelected ? 'bg-[var(--ui-primary)] text-[var(--ui-on-primary)] border-[var(--ui-primary)] shadow-md' : 'bg-white text-[var(--ui-secondary)] border-[var(--ui-border)]/60 hover:border-[var(--ui-primary)]/60 hover:bg-[var(--ui-primary-5)]' }}"
                                             >
                                                 {{ $label }}
@@ -115,37 +120,42 @@
                             document.addEventListener('DOMContentLoaded', function() {
                                 let startDateValue = null;
                                 
+                                function syncStartDate() {
+                                    const startInput = document.getElementById('start_date');
+                                    const wireInput = document.getElementById('start_date_wire');
+                                    
+                                    if (!startInput || !wireInput) return;
+                                    
+                                    if (startInput.value && startInput.value !== startDateValue) {
+                                        startDateValue = startInput.value;
+                                        
+                                        // Setze beide Inputs
+                                        wireInput.value = startInput.value;
+                                        
+                                        // Trigger Livewire Update
+                                        wireInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                        wireInput.dispatchEvent(new Event('change', { bubbles: true }));
+                                        
+                                        // Warte kurz, damit end_date berechnet werden kann
+                                        setTimeout(() => {
+                                            @this.call('loadRooms');
+                                        }, 200);
+                                    }
+                                }
+                                
                                 function setupStartDateBinding() {
                                     const startInput = document.getElementById('start_date');
                                     if (!startInput) return;
                                     
-                                    const handler = function(e) {
-                                        if (startInput.value && startInput.value !== startDateValue) {
-                                            startDateValue = startInput.value;
-                                            @this.set('start_date', startInput.value, false).then(() => {
-                                                // Warte kurz, damit end_date berechnet werden kann
-                                                setTimeout(() => {
-                                                    @this.call('loadRooms');
-                                                }, 100);
-                                            });
-                                        }
-                                    };
-                                    
-                                    startInput.addEventListener('input', handler);
-                                    startInput.addEventListener('change', handler);
+                                    // Event-Listener für input und change
+                                    startInput.addEventListener('input', syncStartDate);
+                                    startInput.addEventListener('change', syncStartDate);
                                     
                                     // MutationObserver für value-Änderungen
                                     const observer = new MutationObserver(function(mutations) {
                                         mutations.forEach(function(mutation) {
                                             if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
-                                                if (startInput.value && startInput.value !== startDateValue) {
-                                                    startDateValue = startInput.value;
-                                                    @this.set('start_date', startInput.value, false).then(() => {
-                                                        setTimeout(() => {
-                                                            @this.call('loadRooms');
-                                                        }, 100);
-                                                    });
-                                                }
+                                                syncStartDate();
                                             }
                                         });
                                     });
@@ -160,16 +170,8 @@
                                 setTimeout(() => {
                                     setupStartDateBinding();
                                     
-                                    // Prüfe ob Startdatum gesetzt ist und lade dann Räume
-                                    const startInput = document.getElementById('start_date');
-                                    if (startInput?.value) {
-                                        startDateValue = startInput.value;
-                                        @this.set('start_date', startInput.value, false).then(() => {
-                                            setTimeout(() => {
-                                                @this.call('loadRooms');
-                                            }, 100);
-                                        });
-                                    }
+                                    // Prüfe ob Startdatum bereits gesetzt ist
+                                    syncStartDate();
                                 }, 300);
                                 
                                 // Nach Livewire-Updates
@@ -177,6 +179,7 @@
                                     Livewire.hook('morph.updated', () => {
                                         setTimeout(() => {
                                             setupStartDateBinding();
+                                            syncStartDate();
                                         }, 200);
                                     });
                                 });
