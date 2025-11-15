@@ -14,6 +14,7 @@ class CreateMeeting extends Component
     public $description = '';
     public $start_date = '';
     public $end_date = '';
+    public $duration_minutes = 60; // Standard: 60 Minuten
     public $location = '';
     public $location_type = 'manual'; // 'manual' oder 'room'
     public $selected_room_id = null;
@@ -33,12 +34,26 @@ class CreateMeeting extends Component
 
     public function updatedStartDate($value)
     {
+        $this->calculateEndDate();
         $this->loadRooms();
     }
 
-    public function updatedEndDate($value)
+    public function updatedDurationMinutes($value)
     {
+        $this->calculateEndDate();
         $this->loadRooms();
+    }
+
+    public function calculateEndDate()
+    {
+        if ($this->start_date && $this->duration_minutes) {
+            try {
+                $start = \Carbon\Carbon::parse($this->start_date);
+                $this->end_date = $start->copy()->addMinutes($this->duration_minutes)->format('Y-m-d H:i:s');
+            } catch (\Throwable $e) {
+                \Log::error('Failed to calculate end date', ['error' => $e->getMessage()]);
+            }
+        }
     }
 
     public function updatedSelectedRoomId()

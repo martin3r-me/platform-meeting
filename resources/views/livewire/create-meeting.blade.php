@@ -27,76 +27,117 @@
                             :errorKey="'description'"
                         />
 
-                        {{-- Datum & Zeit --}}
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <x-ui-input-datetime
-                                name="start_date"
-                                label="Start"
-                                :value="$start_date"
-                                required
-                                :errorKey="'start_date'"
-                            />
-
-                            <x-ui-input-datetime
-                                name="end_date"
-                                label="Ende"
-                                :value="$end_date"
-                                required
-                                :errorKey="'end_date'"
-                            />
+                        {{-- Datum, Zeit & Dauer --}}
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-2">
+                                Startzeit & Dauer
+                            </label>
+                            
+                            <div class="space-y-4">
+                                {{-- Startdatum/Zeit --}}
+                                <x-ui-input-datetime
+                                    name="start_date"
+                                    label="Startdatum & Zeit"
+                                    :value="$start_date"
+                                    required
+                                    :errorKey="'start_date'"
+                                />
+                                
+                                {{-- Dauer-Auswahl --}}
+                                <div>
+                                    <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-3">
+                                        Dauer
+                                    </label>
+                                    <div class="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                        @php
+                                            $durationOptions = [
+                                                15 => '15 Min',
+                                                30 => '30 Min',
+                                                45 => '45 Min',
+                                                60 => '1 Std',
+                                                90 => '1,5 Std',
+                                                180 => '3 Std',
+                                                240 => '4 Std',
+                                            ];
+                                        @endphp
+                                        
+                                        @foreach($durationOptions as $minutes => $label)
+                                            @php
+                                                $isLong = $minutes >= 90;
+                                                $isSelected = $duration_minutes == $minutes;
+                                            @endphp
+                                            <button
+                                                type="button"
+                                                wire:click="$set('duration_minutes', {{ $minutes }})"
+                                                class="px-4 py-2.5 rounded-lg border-2 font-medium text-sm transition-all duration-200 hover:scale-105 {{ $isSelected ? 'bg-[var(--ui-primary)] text-[var(--ui-on-primary)] border-[var(--ui-primary)] shadow-md' : 'bg-white text-[var(--ui-secondary)] border-[var(--ui-border)]/60 hover:border-[var(--ui-primary)]/60 hover:bg-[var(--ui-primary-5)]' }}"
+                                            >
+                                                {{ $label }}
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                    
+                                    @if($duration_minutes >= 90)
+                                        <div class="mt-3 p-3 bg-[var(--ui-warning-5)] border border-[var(--ui-warning)]/30 rounded-lg">
+                                            <div class="flex items-start gap-2">
+                                                @svg('heroicon-o-information-circle', 'w-5 h-5 text-[var(--ui-warning)] flex-shrink-0 mt-0.5')
+                                                <div class="text-sm text-[var(--ui-secondary)]">
+                                                    <p class="font-medium mb-1">Lange Dauer gewählt</p>
+                                                    <p class="text-[var(--ui-muted)]">
+                                                        {{ $duration_minutes >= 180 ? 'Mehr als 3 Stunden' : 'Mehr als 1,5 Stunden' }} - 
+                                                        Bist du sicher, dass das Meeting wirklich so lange dauern muss? 
+                                                        Vielleicht lässt sich die Agenda straffen oder das Meeting aufteilen?
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+                                
+                                {{-- Endzeit Anzeige (nur Info) --}}
+                                @if($start_date && $end_date)
+                                    <div class="p-3 bg-[var(--ui-muted-5)] rounded-lg border border-[var(--ui-border)]/60">
+                                        <div class="flex items-center gap-2 text-sm">
+                                            @svg('heroicon-o-clock', 'w-4 h-4 text-[var(--ui-primary)]')
+                                            <span class="text-[var(--ui-secondary)]">
+                                                Endet um: 
+                                                <span class="font-semibold">
+                                                    {{ \Carbon\Carbon::parse($end_date)->format('d.m.Y H:i') }}
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
                         </div>
                         
                         @push('scripts')
                         <script>
                             document.addEventListener('DOMContentLoaded', function() {
-                                let startDateValue = null;
-                                let endDateValue = null;
-                                
-                                function checkAndLoadRooms() {
+                                function setupStartDateBinding() {
                                     const startInput = document.getElementById('start_date');
-                                    const endInput = document.getElementById('end_date');
+                                    if (!startInput) return;
                                     
-                                    if (startInput?.value && endInput?.value) {
-                                        // Prüfe ob sich die Werte geändert haben
-                                        if (startInput.value !== startDateValue || endInput.value !== endDateValue) {
-                                            startDateValue = startInput.value;
-                                            endDateValue = endInput.value;
-                                            
-                                            // Setze die Livewire-Properties und lade dann Räume
-                                            @this.set('start_date', startInput.value, false);
-                                            @this.set('end_date', endInput.value, false).then(() => {
-                                                @this.call('loadRooms');
-                                            });
-                                        }
-                                    }
-                                }
-                                
-                                function setupDateTimeBinding(inputId, propertyName) {
-                                    const input = document.getElementById(inputId);
-                                    if (!input) return;
-                                    
-                                    // Höre auf input und change Events
                                     const handler = function(e) {
-                                        if (input.value) {
-                                            checkAndLoadRooms();
+                                        if (startInput.value) {
+                                            @this.set('start_date', startInput.value, false);
                                         }
                                     };
                                     
-                                    input.addEventListener('input', handler);
-                                    input.addEventListener('change', handler);
+                                    startInput.addEventListener('input', handler);
+                                    startInput.addEventListener('change', handler);
                                     
-                                    // Auch auf MutationObserver für value-Änderungen
+                                    // MutationObserver für value-Änderungen
                                     const observer = new MutationObserver(function(mutations) {
                                         mutations.forEach(function(mutation) {
                                             if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
-                                                if (input.value) {
-                                                    checkAndLoadRooms();
+                                                if (startInput.value) {
+                                                    @this.set('start_date', startInput.value, false);
                                                 }
                                             }
                                         });
                                     });
                                     
-                                    observer.observe(input, {
+                                    observer.observe(startInput, {
                                         attributes: true,
                                         attributeFilter: ['value']
                                     });
@@ -104,20 +145,22 @@
                                 
                                 // Initial setup
                                 setTimeout(() => {
-                                    setupDateTimeBinding('start_date', 'start_date');
-                                    setupDateTimeBinding('end_date', 'end_date');
+                                    setupStartDateBinding();
                                     
-                                    // Prüfe ob beide Werte bereits gesetzt sind
-                                    checkAndLoadRooms();
+                                    // Prüfe ob Startdatum gesetzt ist und lade dann Räume
+                                    const startInput = document.getElementById('start_date');
+                                    if (startInput?.value) {
+                                        @this.set('start_date', startInput.value, false).then(() => {
+                                            @this.call('loadRooms');
+                                        });
+                                    }
                                 }, 300);
                                 
                                 // Nach Livewire-Updates
                                 document.addEventListener('livewire:init', () => {
                                     Livewire.hook('morph.updated', () => {
                                         setTimeout(() => {
-                                            setupDateTimeBinding('start_date', 'start_date');
-                                            setupDateTimeBinding('end_date', 'end_date');
-                                            checkAndLoadRooms();
+                                            setupStartDateBinding();
                                         }, 200);
                                     });
                                 });
