@@ -82,27 +82,53 @@ class Appointment extends Component
         $this->dispatch('agendaSlotUpdated');
     }
 
-    public function updateAgendaSlotOrder($slotIds)
+    /**
+     * Aktualisiert Reihenfolge der Slots nach Drag&Drop.
+     */
+    public function updateAgendaSlotOrder($groups)
     {
         $this->authorize('update', $this->appointment);
 
-        foreach ($slotIds as $order => $slotId) {
-            MeetingAgendaSlot::where('id', $slotId)
-                ->where('appointment_id', $this->appointment->id)
-                ->update(['order' => $order]);
+        foreach ($groups as $group) {
+            $slotId = ($group['value'] === 'null' || (int) $group['value'] === 0)
+                ? null
+                : (int) $group['value'];
+
+            if ($slotId) {
+                $slot = MeetingAgendaSlot::find($slotId);
+                if ($slot && $slot->appointment_id === $this->appointment->id) {
+                    $slot->order = $group['order'];
+                    $slot->save();
+                }
+            }
         }
 
         $this->dispatch('agendaSlotUpdated');
     }
 
-    public function updateAgendaItemOrder($itemIds)
+    /**
+     * Aktualisiert Reihenfolge und Slot-Zugehörigkeit der Agenda Items nach Drag&Drop.
+     */
+    public function updateAgendaItemOrder($groups)
     {
         $this->authorize('update', $this->appointment);
 
-        foreach ($itemIds as $order => $itemId) {
-            MeetingAgendaItem::where('id', $itemId)
-                ->where('appointment_id', $this->appointment->id)
-                ->update(['order' => $order]);
+        foreach ($groups as $group) {
+            $slotId = ($group['value'] === 'null' || (int) $group['value'] === 0)
+                ? null
+                : (int) $group['value'];
+
+            foreach ($group['items'] as $item) {
+                $agendaItem = MeetingAgendaItem::find($item['value']);
+
+                if (!$agendaItem || $agendaItem->appointment_id !== $this->appointment->id) {
+                    continue;
+                }
+
+                $agendaItem->order = $item['order'];
+                $agendaItem->agenda_slot_id = $slotId;
+                $agendaItem->save();
+            }
         }
 
         $this->dispatch('agendaSlotUpdated');
@@ -239,25 +265,51 @@ class Appointment extends Component
     {
         $user = Auth::user();
 
-        // Agenda Slots mit Items laden
-        $agendaSlots = $this->appointment->agendaSlots()
-            ->with(['agendaItems' => function ($query) {
-                $query->orderBy('order');
-            }])
-            ->get();
-
-        // Backlog (Items ohne Slot)
-        $backlogItems = $this->appointment->agendaItems()
+        // === 1. BACKLOG ===
+        $backlogItems = MeetingAgendaItem::where('appointment_id', $this->appointment->id)
             ->whereNull('agenda_slot_id')
+            ->where('status', '!=', 'done')
             ->orderBy('order')
             ->get();
 
-        // Done Slot
-        $doneSlot = $agendaSlots->firstWhere('is_done_slot', true);
-        $doneItems = $doneSlot ? $doneSlot->agendaItems : collect();
+        $backlog = (object) [
+            'id' => null,
+            'label' => 'Backlog',
+            'isBacklog' => true,
+            'agendaItems' => $backlogItems,
+        ];
 
-        // Aktive Slots (ohne Done)
-        $activeSlots = $agendaSlots->reject(fn($slot) => $slot->is_done_slot);
+        // === 2. AGENDA-SLOTS ===
+        $slots = MeetingAgendaSlot::with(['agendaItems' => function ($q) {
+                $q->where('status', '!=', 'done')->orderBy('order');
+            }])
+            ->where('appointment_id', $this->appointment->id)
+            ->where('is_done_slot', false)
+            ->orderBy('order')
+            ->get()
+            ->map(fn ($slot) => (object) [
+                'id' => $slot->id,
+                'label' => $slot->name,
+                'isBacklog' => false,
+                'agendaItems' => $slot->agendaItems,
+            ]);
+
+        // === 3. ERLEDIGTE ITEMS ===
+        $doneItems = MeetingAgendaItem::where('appointment_id', $this->appointment->id)
+            ->where('status', 'done')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $completedGroup = (object) [
+            'id' => 'done',
+            'label' => 'Erledigt',
+            'isDoneGroup' => true,
+            'isBacklog' => false,
+            'agendaItems' => $doneItems,
+        ];
+
+        // === BOARD-GRUPPEN ZUSAMMENSTELLEN ===
+        $groups = collect([$backlog])->concat($slots)->push($completedGroup);
 
         // Team-Mitglieder für Zuweisung
         $teamMembers = $this->appointment->meeting->team->users()
@@ -265,10 +317,7 @@ class Appointment extends Component
             ->get();
 
         return view('meetings::livewire.appointment', [
-            'agendaSlots' => $activeSlots,
-            'backlogItems' => $backlogItems,
-            'doneItems' => $doneItems,
-            'doneSlot' => $doneSlot,
+            'groups' => $groups,
             'activities' => $this->activities,
             'teamMembers' => $teamMembers,
             'agendaStats' => $this->agendaStats,

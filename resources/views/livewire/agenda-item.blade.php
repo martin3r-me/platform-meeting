@@ -124,7 +124,7 @@
                             <x-ui-input-select
                                 name="agendaItem.assigned_to_id"
                                 label="Verantwortlicher"
-                                :options="$teamUsers"
+                                :options="$teamUsers ?? []"
                                 optionValue="id"
                                 optionLabel="name"
                                 :nullable="true"

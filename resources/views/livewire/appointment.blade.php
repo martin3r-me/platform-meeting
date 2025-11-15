@@ -142,21 +142,22 @@
     {{-- Board-Container: füllt restliche Breite, Spalten scrollen intern --}}
     <x-ui-kanban-container sortable="updateAgendaSlotOrder" sortable-group="updateAgendaItemOrder">
         {{-- Backlog (nicht sortierbar als Gruppe) --}}
-        @if($backlogItems->count() > 0)
-            <x-ui-kanban-column title="Backlog" :sortable-id="null" :scrollable="true" :muted="true">
-                @foreach($backlogItems as $item)
+        @php $backlog = $groups->first(fn($g) => ($g->isBacklog ?? false)); @endphp
+        @if($backlog)
+            <x-ui-kanban-column :title="($backlog->label ?? 'Backlog')" :sortable-id="null" :scrollable="true" :muted="true">
+                @foreach($backlog->agendaItems as $item)
                     @include('meetings::livewire.agenda-item-preview-card', ['agendaItem' => $item])
                 @endforeach
             </x-ui-kanban-column>
         @endif
 
         {{-- Mittlere Spalten (sortierbar) --}}
-        @foreach($agendaSlots as $slot)
-            <x-ui-kanban-column :title="$slot->name" :sortable-id="$slot->id" :scrollable="true">
+        @foreach($groups->filter(fn ($g) => !($g->isDoneGroup ?? false) && !($g->isBacklog ?? false)) as $column)
+            <x-ui-kanban-column :title="($column->label ?? $column->name ?? 'Spalte')" :sortable-id="$column->id" :scrollable="true">
                 <x-slot name="headerActions">
                     @can('update', $appointment)
                         <button 
-                            wire:click="createAgendaItem('{{ $slot->id }}')" 
+                            wire:click="createAgendaItem('{{ $column->id }}')" 
                             class="text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors"
                             title="Neues Agenda Item"
                         >
@@ -165,16 +166,17 @@
                     @endcan
                 </x-slot>
 
-                @foreach($slot->agendaItems as $item)
+                @foreach($column->agendaItems as $item)
                     @include('meetings::livewire.agenda-item-preview-card', ['agendaItem' => $item])
                 @endforeach
             </x-ui-kanban-column>
         @endforeach
 
         {{-- Erledigt (nicht sortierbar als Gruppe) --}}
-        @if($doneSlot && $doneItems->count() > 0)
-            <x-ui-kanban-column :title="$doneSlot->name" :sortable-id="null" :scrollable="true" :muted="true">
-                @foreach($doneItems as $item)
+        @php $done = $groups->first(fn($g) => ($g->isDoneGroup ?? false)); @endphp
+        @if($done)
+            <x-ui-kanban-column :title="($done->label ?? 'Erledigt')" :sortable-id="null" :scrollable="true" :muted="true">
+                @foreach($done->agendaItems as $item)
                     @include('meetings::livewire.agenda-item-preview-card', ['agendaItem' => $item])
                 @endforeach
             </x-ui-kanban-column>
