@@ -148,5 +148,68 @@ class RecurringMeeting extends Model
 
         return now()->isSameDay($this->next_meeting_date) || now()->isAfter($this->next_meeting_date);
     }
+
+    /**
+     * Erstellt alle fehlenden Meetings bis zu einem bestimmten Datum
+     * 
+     * @param \Carbon\Carbon $untilDate Bis zu diesem Datum werden Meetings erstellt
+     * @return array Array von erstellten Meetings
+     */
+    public function createMeetingsUntil(\Carbon\Carbon $untilDate): array
+    {
+        if (!$this->is_active) {
+            return [];
+        }
+
+        $createdMeetings = [];
+        $currentDate = $this->next_meeting_date ? $this->next_meeting_date->copy()->startOfDay() : now()->startOfDay();
+        $untilDate = $untilDate->copy()->endOfDay();
+
+        // Prüfe, welche Meetings bereits existieren (nur Datum, nicht Uhrzeit)
+        $existingDates = $this->meetings()
+            ->where('start_date', '>=', $currentDate)
+            ->where('start_date', '<=', $untilDate)
+            ->get()
+            ->map(fn($meeting) => $meeting->start_date->format('Y-m-d'))
+            ->unique()
+            ->toArray();
+
+        // Erstelle Meetings bis zum Enddatum
+        $maxIterations = 1000; // Sicherheit gegen Endlosschleifen
+        $iteration = 0;
+
+        while ($currentDate->lte($untilDate) && $iteration < $maxIterations) {
+            $iteration++;
+
+            // Prüfe ob Recurrence-Enddatum erreicht
+            if ($this->recurrence_end_date && $currentDate->isAfter($this->recurrence_end_date)) {
+                break;
+            }
+
+            // Prüfe ob Meeting bereits existiert (nur Datum-Vergleich)
+            $dateKey = $currentDate->format('Y-m-d');
+            if (!in_array($dateKey, $existingDates)) {
+                // Temporär next_meeting_date setzen für createMeeting()
+                $this->next_meeting_date = $currentDate->copy();
+                
+                $meeting = $this->createMeeting();
+                $createdMeetings[] = $meeting;
+                
+                // next_meeting_date wird in createMeeting() bereits aktualisiert
+                $currentDate = $this->next_meeting_date->copy()->startOfDay();
+            } else {
+                // Nächstes Datum berechnen (ohne Meeting zu erstellen)
+                $tempDate = $currentDate->copy();
+                $this->next_meeting_date = $tempDate;
+                $this->calculateNextMeetingDate();
+                $currentDate = $this->next_meeting_date->copy()->startOfDay();
+            }
+        }
+
+        // next_meeting_date speichern
+        $this->save();
+
+        return $createdMeetings;
+    }
 }
 
