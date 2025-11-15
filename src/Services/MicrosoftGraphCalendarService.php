@@ -788,7 +788,8 @@ class MicrosoftGraphCalendarService
         $token = $this->getAccessToken($user);
         if (!$token) {
             Log::warning('Microsoft Graph: No access token for user', ['user_id' => $user->id]);
-            return [];
+            // Wirft Exception, damit der Caller weiß, dass es ein Token-Problem ist
+            throw new \RuntimeException('Kein gültiger Access Token verfügbar. Bitte einmal über Azure SSO einloggen.');
         }
 
         $startDate = $startDate ?? now();

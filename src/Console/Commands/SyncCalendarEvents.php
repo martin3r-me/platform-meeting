@@ -54,15 +54,44 @@ class SyncCalendarEvents extends Command
             $this->line("Verarbeite User: {$user->name} ({$user->email})");
             
             try {
-                // Events für diesen User holen
-                $events = $calendarService->getFutureEvents($user, $startDate, $endDate);
+                // Prüfe zuerst, ob Token verfügbar ist
+                $tokenModel = \Platform\Core\Models\MicrosoftOAuthToken::where('user_id', $user->id)->first();
                 
-                if (empty($events)) {
-                    $this->line("  → Keine Events gefunden oder kein Token verfügbar");
+                if (!$tokenModel) {
+                    $this->warn("  → Kein Token in Datenbank gefunden. User muss sich einmal über Azure SSO einloggen.");
                     continue;
                 }
+                
+                // Prüfe Token-Status
+                if ($tokenModel->isExpired()) {
+                    if ($tokenModel->refresh_token) {
+                        $this->line("  → Token abgelaufen, versuche automatisches Refresh...");
+                        $this->line("     Abgelaufen am: " . $tokenModel->expires_at?->format('d.m.Y H:i:s'));
+                        // Token-Refresh wird automatisch in getAccessToken() durchgeführt
+                    } else {
+                        $this->warn("  → Token abgelaufen und kein Refresh Token verfügbar. User muss sich einmal über Azure SSO einloggen.");
+                        $this->line("     Abgelaufen am: " . $tokenModel->expires_at?->format('d.m.Y H:i:s'));
+                        continue;
+                    }
+                } else {
+                    $this->line("  → Token gültig bis: " . $tokenModel->expires_at?->format('d.m.Y H:i:s'));
+                }
+                
+                // Events für diesen User holen
+                try {
+                    $events = $calendarService->getFutureEvents($user, $startDate, $endDate);
+                    
+                    if (empty($events)) {
+                        $this->info("  → Token verfügbar, aber keine Events im Kalender gefunden");
+                        continue;
+                    }
 
-                $this->line("  → " . count($events) . " Event(s) gefunden");
+                    $this->info("  → " . count($events) . " Event(s) gefunden");
+                } catch (\RuntimeException $e) {
+                    // Token-Problem wurde bereits oben geprüft, aber falls doch noch ein Problem auftritt
+                    $this->warn("  → " . $e->getMessage());
+                    continue;
+                }
 
                 foreach ($events as $event) {
                     try {
