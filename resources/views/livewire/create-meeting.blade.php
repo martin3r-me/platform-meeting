@@ -28,60 +28,59 @@
                         />
 
                         {{-- Datum & Zeit --}}
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <x-ui-input-datetime
-                                    name="start_date"
-                                    label="Start"
-                                    :value="$start_date"
-                                    required
-                                    :errorKey="'start_date'"
-                                />
-                                <div x-data x-init="
-                                    const input = document.getElementById('start_date');
-                                    if (input) {
-                                        const observer = new MutationObserver(() => {
-                                            if (input.value) {
-                                                $wire.set('start_date', input.value);
-                                            }
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6" 
+                             x-data="{
+                                init() {
+                                    // Warte bis das DOM vollständig geladen ist
+                                    this.$nextTick(() => {
+                                        this.setupInputListeners();
+                                    });
+                                    
+                                    // Auch nach Livewire-Updates
+                                    Livewire.hook('morph.updated', () => {
+                                        setTimeout(() => this.setupInputListeners(), 50);
+                                    });
+                                },
+                                setupInputListeners() {
+                                    const startInput = document.getElementById('start_date');
+                                    const endInput = document.getElementById('end_date');
+                                    
+                                    if (startInput && !startInput.hasAttribute('data-wire-bound')) {
+                                        startInput.setAttribute('data-wire-bound', 'true');
+                                        startInput.addEventListener('input', (e) => {
+                                            @this.set('start_date', e.target.value);
                                         });
-                                        observer.observe(input, { attributes: true, attributeFilter: ['value'] });
-                                        input.addEventListener('input', () => {
-                                            $wire.set('start_date', input.value);
-                                        });
-                                        input.addEventListener('change', () => {
-                                            $wire.set('start_date', input.value);
+                                        startInput.addEventListener('change', (e) => {
+                                            @this.set('start_date', e.target.value);
                                         });
                                     }
-                                "></div>
-                            </div>
+                                    
+                                    if (endInput && !endInput.hasAttribute('data-wire-bound')) {
+                                        endInput.setAttribute('data-wire-bound', 'true');
+                                        endInput.addEventListener('input', (e) => {
+                                            @this.set('end_date', e.target.value);
+                                        });
+                                        endInput.addEventListener('change', (e) => {
+                                            @this.set('end_date', e.target.value);
+                                        });
+                                    }
+                                }
+                             }">
+                            <x-ui-input-datetime
+                                name="start_date"
+                                label="Start"
+                                :value="$start_date"
+                                required
+                                :errorKey="'start_date'"
+                            />
 
-                            <div>
-                                <x-ui-input-datetime
-                                    name="end_date"
-                                    label="Ende"
-                                    :value="$end_date"
-                                    required
-                                    :errorKey="'end_date'"
-                                />
-                                <div x-data x-init="
-                                    const input = document.getElementById('end_date');
-                                    if (input) {
-                                        const observer = new MutationObserver(() => {
-                                            if (input.value) {
-                                                $wire.set('end_date', input.value);
-                                            }
-                                        });
-                                        observer.observe(input, { attributes: true, attributeFilter: ['value'] });
-                                        input.addEventListener('input', () => {
-                                            $wire.set('end_date', input.value);
-                                        });
-                                        input.addEventListener('change', () => {
-                                            $wire.set('end_date', input.value);
-                                        });
-                                    }
-                                "></div>
-                            </div>
+                            <x-ui-input-datetime
+                                name="end_date"
+                                label="Ende"
+                                :value="$end_date"
+                                required
+                                :errorKey="'end_date'"
+                            />
                         </div>
 
                         {{-- Ort / Raum --}}
