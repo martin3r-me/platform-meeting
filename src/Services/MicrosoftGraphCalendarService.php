@@ -57,20 +57,28 @@ class MicrosoftGraphCalendarService
                     Log::warning('Microsoft Graph: Token in DB but decryption failed', ['user_id' => $user->id]);
                 }
             } else {
-                Log::info('Microsoft Graph: Token expired', [
+                Log::info('Microsoft Graph: Token expired, attempting refresh', [
                     'user_id' => $user->id,
                     'expires_at' => $tokenModel->expires_at?->toIso8601String(),
+                    'has_refresh_token' => !empty($tokenModel->refresh_token),
                 ]);
             }
 
             // 4. Token Refresh versuchen (falls Refresh Token vorhanden)
+            // WICHTIG: Automatisches Token-Refresh wenn Token abgelaufen ist
             if ($tokenModel->refresh_token) {
-                Log::info('Microsoft Graph: Attempting token refresh', ['user_id' => $user->id]);
+                Log::info('Microsoft Graph: Attempting automatic token refresh', ['user_id' => $user->id]);
                 $newToken = $this->refreshToken($user, $tokenModel);
                 if ($newToken) {
                     Log::info('Microsoft Graph: Token refreshed successfully', ['user_id' => $user->id]);
                     return $newToken;
+                } else {
+                    Log::warning('Microsoft Graph: Token refresh failed', ['user_id' => $user->id]);
                 }
+            } else {
+                Log::warning('Microsoft Graph: Token expired but no refresh token available. User needs to login again via Azure SSO to get a refresh token.', [
+                    'user_id' => $user->id,
+                ]);
             }
         } else {
             Log::debug('Microsoft Graph: No token found in database', ['user_id' => $user->id]);
