@@ -6,7 +6,7 @@
     <x-ui-page-container spacing="space-y-6">
         <div class="bg-white rounded-xl border border-[var(--ui-border)]/60 shadow-sm overflow-hidden">
             <div class="p-6 lg:p-8">
-                <form wire:submit="save">
+                <form wire:submit.prevent="save">
                     <x-ui-form-grid :cols="1" :gap="6">
                         {{-- Titel --}}
                         <x-ui-input-text
@@ -28,44 +28,7 @@
                         />
 
                         {{-- Datum & Zeit --}}
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6" 
-                             x-data="{
-                                init() {
-                                    // Warte bis das DOM vollständig geladen ist
-                                    this.$nextTick(() => {
-                                        this.setupInputListeners();
-                                    });
-                                    
-                                    // Auch nach Livewire-Updates
-                                    Livewire.hook('morph.updated', () => {
-                                        setTimeout(() => this.setupInputListeners(), 50);
-                                    });
-                                },
-                                setupInputListeners() {
-                                    const startInput = document.getElementById('start_date');
-                                    const endInput = document.getElementById('end_date');
-                                    
-                                    if (startInput && !startInput.hasAttribute('data-wire-bound')) {
-                                        startInput.setAttribute('data-wire-bound', 'true');
-                                        startInput.addEventListener('input', (e) => {
-                                            @this.set('start_date', e.target.value);
-                                        });
-                                        startInput.addEventListener('change', (e) => {
-                                            @this.set('start_date', e.target.value);
-                                        });
-                                    }
-                                    
-                                    if (endInput && !endInput.hasAttribute('data-wire-bound')) {
-                                        endInput.setAttribute('data-wire-bound', 'true');
-                                        endInput.addEventListener('input', (e) => {
-                                            @this.set('end_date', e.target.value);
-                                        });
-                                        endInput.addEventListener('change', (e) => {
-                                            @this.set('end_date', e.target.value);
-                                        });
-                                    }
-                                }
-                             }">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <x-ui-input-datetime
                                 name="start_date"
                                 label="Start"
@@ -82,6 +45,59 @@
                                 :errorKey="'end_date'"
                             />
                         </div>
+                        
+                        @push('scripts')
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                function setupDateTimeBinding(inputId, propertyName) {
+                                    const input = document.getElementById(inputId);
+                                    if (!input) return;
+                                    
+                                    // Höre auf input und change Events
+                                    const handler = function(e) {
+                                        if (input.value) {
+                                            @this.set(propertyName, input.value);
+                                        }
+                                    };
+                                    
+                                    input.addEventListener('input', handler);
+                                    input.addEventListener('change', handler);
+                                    
+                                    // Auch auf MutationObserver für value-Änderungen
+                                    const observer = new MutationObserver(function(mutations) {
+                                        mutations.forEach(function(mutation) {
+                                            if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                                                if (input.value) {
+                                                    @this.set(propertyName, input.value);
+                                                }
+                                            }
+                                        });
+                                    });
+                                    
+                                    observer.observe(input, {
+                                        attributes: true,
+                                        attributeFilter: ['value']
+                                    });
+                                }
+                                
+                                // Initial setup
+                                setTimeout(() => {
+                                    setupDateTimeBinding('start_date', 'start_date');
+                                    setupDateTimeBinding('end_date', 'end_date');
+                                }, 300);
+                                
+                                // Nach Livewire-Updates
+                                document.addEventListener('livewire:init', () => {
+                                    Livewire.hook('morph.updated', () => {
+                                        setTimeout(() => {
+                                            setupDateTimeBinding('start_date', 'start_date');
+                                            setupDateTimeBinding('end_date', 'end_date');
+                                        }, 200);
+                                    });
+                                });
+                            });
+                        </script>
+                        @endpush
 
                         {{-- Ort / Raum --}}
                         <div>
