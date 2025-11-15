@@ -114,7 +114,7 @@ class Appointment extends Component
 
         $maxOrder = $this->appointment->agendaItems()->max('order') ?? 0;
 
-        MeetingAgendaItem::create([
+        $item = MeetingAgendaItem::create([
             'appointment_id' => $this->appointment->id,
             'meeting_id' => $this->appointment->meeting_id,
             'agenda_slot_id' => $slotId,
@@ -124,6 +124,9 @@ class Appointment extends Component
         ]);
 
         $this->dispatch('agendaSlotUpdated');
+        
+        // Optional: Direkt zur Agenda-Item-View weiterleiten
+        // return redirect()->route('meetings.agenda-items.show', $item);
     }
 
     public function editAgendaItem($itemId)

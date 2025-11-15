@@ -4,27 +4,43 @@
     </x-slot>
 
     <x-slot name="sidebar">
-        <x-ui-page-sidebar title="Übersicht" width="w-80" :defaultOpen="true">
-            <div class="p-6 space-y-6">
+        <x-ui-page-sidebar title="Termin-Übersicht" width="w-80" :defaultOpen="true">
+            <div class="p-4 space-y-4">
                 {{-- Aktionen --}}
                 <div>
-                    <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider mb-4">Aktionen</h3>
-                    <div class="space-y-2">
-                        <x-ui-button variant="secondary-outline" size="sm" :href="route('meetings.show', $appointment->meeting)" wire:navigate class="w-full">
-                            <span class="flex items-center gap-2">
-                                @svg('heroicon-o-video-camera', 'w-4 h-4')
-                                Zum Meeting
+                    <h3 class="text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)] mb-3">Aktionen</h3>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        @can('update', $appointment)
+                            <x-ui-button variant="secondary" size="sm" wire:click="createAgendaSlot">
+                                <span class="inline-flex items-center gap-2">
+                                    @svg('heroicon-o-square-2-stack','w-4 h-4')
+                                    <span class="hidden sm:inline">Spalte</span>
+                                </span>
+                            </x-ui-button>
+                        @endcan
+                        @can('update', $appointment)
+                            <x-ui-button variant="secondary" size="sm" wire:click="createAgendaItem()">
+                                <span class="inline-flex items-center gap-2">
+                                    @svg('heroicon-o-plus','w-4 h-4')
+                                    <span class="hidden sm:inline">Agenda Item</span>
+                                </span>
+                            </x-ui-button>
+                        @endcan
+                        <x-ui-button variant="secondary-outline" size="sm" :href="route('meetings.show', $appointment->meeting)" wire:navigate>
+                            <span class="inline-flex items-center gap-2">
+                                @svg('heroicon-o-video-camera','w-4 h-4')
+                                <span class="hidden sm:inline">Meeting</span>
                             </span>
                         </x-ui-button>
                         @if($appointment->team)
                             <button 
                                 type="button"
                                 onclick="window.dispatchEvent(new CustomEvent('open-team-flyout'))"
-                                class="w-full px-3 py-2 text-sm font-medium rounded-md border border-[var(--ui-border)]/60 bg-white text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)] transition-colors"
+                                class="px-3 py-2 text-sm font-medium rounded-md border border-[var(--ui-border)]/60 bg-white text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)] transition-colors"
                             >
-                                <span class="flex items-center gap-2">
-                                    @svg('heroicon-o-user-group', 'w-4 h-4')
-                                    Team verwalten
+                                <span class="inline-flex items-center gap-2">
+                                    @svg('heroicon-o-user-group','w-4 h-4')
+                                    <span class="hidden sm:inline">Team</span>
                                 </span>
                             </button>
                         @endif
@@ -33,7 +49,7 @@
 
                 {{-- Agenda Statistiken --}}
                 <div>
-                    <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider mb-4">Agenda Statistiken</h3>
+                    <h3 class="text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)] mb-3">Statistiken</h3>
                     <div class="space-y-2">
                         @foreach($agendaStats as $stat)
                             <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
@@ -49,56 +65,46 @@
                     </div>
                 </div>
 
-                {{-- Details --}}
+                {{-- Termin-Details --}}
                 <div>
-                    <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider mb-4">Details</h3>
-                    <div class="space-y-3">
-                        <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
-                            <div class="flex items-center gap-2">
-                                @svg('heroicon-o-calendar', 'w-4 h-4 text-[var(--ui-primary)]')
-                                <span class="text-sm text-[var(--ui-secondary)]">Start</span>
-                            </div>
-                            <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $appointment->start_date->format('d.m.Y H:i') }}</span>
+                    <h3 class="text-xs font-semibold uppercase tracking-wide text-[var(--ui-muted)] mb-3">Details</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between py-1">
+                            <span class="text-[var(--ui-muted)]">Start:</span>
+                            <span class="text-[var(--ui-secondary)] font-medium">
+                                {{ $appointment->start_date->format('d.m.Y H:i') }}
+                            </span>
                         </div>
-                        <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
-                            <div class="flex items-center gap-2">
-                                @svg('heroicon-o-clock', 'w-4 h-4 text-[var(--ui-primary)]')
-                                <span class="text-sm text-[var(--ui-secondary)]">Ende</span>
-                            </div>
-                            <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $appointment->end_date->format('d.m.Y H:i') }}</span>
+                        <div class="flex justify-between py-1">
+                            <span class="text-[var(--ui-muted)]">Ende:</span>
+                            <span class="text-[var(--ui-secondary)] font-medium">
+                                {{ $appointment->end_date->format('d.m.Y H:i') }}
+                            </span>
                         </div>
                         @if($appointment->meeting->location)
-                            <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
-                                <div class="flex items-center gap-2">
-                                    @svg('heroicon-o-map-pin', 'w-4 h-4 text-[var(--ui-primary)]')
-                                    <span class="text-sm text-[var(--ui-secondary)]">Ort</span>
-                                </div>
-                                <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $appointment->meeting->location }}</span>
+                            <div class="flex justify-between py-1">
+                                <span class="text-[var(--ui-muted)]">Ort:</span>
+                                <span class="text-[var(--ui-secondary)] font-medium">
+                                    {{ $appointment->meeting->location }}
+                                </span>
                             </div>
                         @endif
-                        <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
-                            <div class="flex items-center gap-2">
-                                @svg('heroicon-o-user', 'w-4 h-4 text-[var(--ui-primary)]')
-                                <span class="text-sm text-[var(--ui-secondary)]">Teilnehmer</span>
-                            </div>
-                            <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $appointment->user->fullname ?? $appointment->user->name }}</span>
+                        <div class="flex justify-between py-1">
+                            <span class="text-[var(--ui-muted)]">Teilnehmer:</span>
+                            <span class="text-[var(--ui-secondary)] font-medium">
+                                {{ $appointment->user->fullname ?? $appointment->user->name }}
+                            </span>
                         </div>
                         @if($appointment->team)
-                            <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
-                                <div class="flex items-center gap-2">
-                                    @svg('heroicon-o-user-group', 'w-4 h-4 text-[var(--ui-primary)]')
-                                    <span class="text-sm text-[var(--ui-secondary)]">Team</span>
-                                </div>
-                                <span class="text-sm font-semibold text-[var(--ui-secondary)]">
+                            <div class="flex justify-between py-1">
+                                <span class="text-[var(--ui-muted)]">Team:</span>
+                                <span class="text-[var(--ui-secondary)] font-medium">
                                     {{ $appointment->team->name }}
                                 </span>
                             </div>
                         @endif
-                        <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
-                            <div class="flex items-center gap-2">
-                                @svg('heroicon-o-check-circle', 'w-4 h-4 text-[var(--ui-primary)]')
-                                <span class="text-sm text-[var(--ui-secondary)]">Sync-Status</span>
-                            </div>
+                        <div class="flex justify-between py-1">
+                            <span class="text-[var(--ui-muted)]">Sync-Status:</span>
                             @php
                                 $syncColors = [
                                     'synced' => 'success',
@@ -117,134 +123,61 @@
         </x-ui-page-sidebar>
     </x-slot>
 
-    <x-ui-page-container>
-        {{-- Meta-Daten Header --}}
-        <div class="bg-white rounded-xl border border-[var(--ui-border)]/60 shadow-sm overflow-hidden mb-6">
-            <div class="p-6 lg:p-8">
-                <div class="flex items-start justify-between gap-4 mb-4">
-                    <div class="flex-1 min-w-0">
-                        <h1 class="text-3xl font-bold text-[var(--ui-secondary)] mb-4 tracking-tight leading-tight">{{ $appointment->meeting->title }}</h1>
-                        
-                        {{-- Meta Informationen --}}
-                        <div class="space-y-2">
-                            {{-- Erste Zeile: Team & Teilnehmer --}}
-                            <div class="flex flex-wrap items-center gap-6 text-sm text-[var(--ui-muted)]">
-                                @if($appointment->team)
-                                    <span class="flex items-center gap-2">
-                                        @svg('heroicon-o-user-group', 'w-4 h-4')
-                                        <span>Team: <span class="text-[var(--ui-secondary)]">{{ $appointment->team->name }}</span></span>
-                                    </span>
-                                @elseif($appointment->meeting->team)
-                                    <span class="flex items-center gap-2">
-                                        @svg('heroicon-o-user-group', 'w-4 h-4')
-                                        <span>Team: <span class="text-[var(--ui-secondary)]">{{ $appointment->meeting->team->name }}</span></span>
-                                    </span>
-                                @endif
-                                <span class="flex items-center gap-2">
-                                    @svg('heroicon-o-user', 'w-4 h-4')
-                                    <span>Teilnehmer: <span class="text-[var(--ui-secondary)]">{{ $appointment->user->fullname ?? $appointment->user->name }}</span></span>
-                                </span>
-                            </div>
-                            
-                            {{-- Meeting Link --}}
-                            <div class="flex flex-wrap items-center gap-6 text-sm text-[var(--ui-muted)]">
-                                <a 
-                                    href="{{ route('meetings.show', $appointment->meeting) }}" 
-                                    wire:navigate
-                                    class="flex items-center gap-2 hover:text-[var(--ui-primary)] transition-colors"
-                                >
-                                    @svg('heroicon-o-video-camera', 'w-4 h-4')
-                                    <span>Meeting: <span class="text-[var(--ui-secondary)]">{{ $appointment->meeting->title }}</span></span>
-                                </a>
-                            </div>
-                            
-                            {{-- Zweite Zeile: Datum & Ort --}}
-                            <div class="flex flex-wrap items-center gap-6 text-sm text-[var(--ui-muted)]">
-                                <span class="flex items-center gap-2">
-                                    @svg('heroicon-o-calendar', 'w-4 h-4')
-                                    <span>{{ $appointment->start_date->format('d.m.Y H:i') }} - {{ $appointment->end_date->format('H:i') }}</span>
-                                </span>
-                                @if($appointment->meeting->location)
-                                    <span class="flex items-center gap-2">
-                                        @svg('heroicon-o-map-pin', 'w-4 h-4')
-                                        <span>{{ $appointment->meeting->location }}</span>
-                                    </span>
-                                @endif
-                            </div>
+    <x-slot name="activity">
+        <x-ui-page-sidebar title="Aktivitäten" width="w-80" :defaultOpen="true" storeKey="activityOpen" side="right">
+            <div class="p-4 space-y-4">
+                <div class="text-sm text-[var(--ui-muted)]">Letzte Aktivitäten</div>
+                <div class="space-y-3 text-sm">
+                    @foreach(($activities ?? []) as $activity)
+                        <div class="p-2 rounded border border-[var(--ui-border)]/60 bg-[var(--ui-muted-5)]">
+                            <div class="font-medium text-[var(--ui-secondary)] truncate">{{ $activity['title'] ?? 'Aktivität' }}</div>
+                            <div class="text-[var(--ui-muted)]">{{ $activity['time'] ?? '' }}</div>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="p-6">
-            {{-- Beschreibung --}}
-            @if($appointment->meeting->description)
-                <div class="mb-6">
-                    <h3 class="text-sm font-semibold mb-2">Beschreibung</h3>
-                    <div class="prose prose-sm max-w-none">
-                        {!! nl2br(e($appointment->meeting->description)) !!}
-                    </div>
-                </div>
-            @endif
-
-            {{-- Agenda Kanban Board --}}
-            <div>
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold">Agenda</h3>
-                    @can('update', $appointment)
-                        <div class="flex items-center gap-2">
-                            <x-ui-button variant="secondary-outline" size="sm" wire:click="createAgendaSlot">
-                                <span class="flex items-center gap-2">
-                                    @svg('heroicon-o-plus-circle', 'w-4 h-4')
-                                    Neue Spalte
-                                </span>
-                            </x-ui-button>
-                        </div>
-                    @endcan
-                </div>
-                
-                <x-ui-kanban-container sortable="updateAgendaSlotOrder" sortable-group="updateAgendaItemOrder">
-                    {{-- Backlog --}}
-                    @if($backlogItems->count() > 0)
-                        <x-ui-kanban-column title="Backlog" :sortable-id="null" :scrollable="true" :muted="true">
-                            @foreach($backlogItems as $item)
-                                @include('meetings::livewire.agenda-item-preview-card', ['agendaItem' => $item])
-                            @endforeach
-                        </x-ui-kanban-column>
-                    @endif
-
-                    {{-- Agenda Slots --}}
-                    @foreach($agendaSlots as $slot)
-                        <x-ui-kanban-column :title="$slot->name" :sortable-id="$slot->id" :scrollable="true">
-                            <x-slot name="headerActions">
-                                @can('update', $appointment)
-                                    <button 
-                                        wire:click="createAgendaItem('{{ $slot->id }}')" 
-                                        class="text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors"
-                                        title="Neues Agenda Item"
-                                    >
-                                        @svg('heroicon-o-plus-circle', 'w-4 h-4')
-                                    </button>
-                                @endcan
-                            </x-slot>
-
-                            @foreach($slot->agendaItems as $item)
-                                @include('meetings::livewire.agenda-item-preview-card', ['agendaItem' => $item])
-                            @endforeach
-                        </x-ui-kanban-column>
                     @endforeach
-
-                    {{-- Done --}}
-                    @if($doneSlot && $doneItems->count() > 0)
-                        <x-ui-kanban-column :title="$doneSlot->name" :sortable-id="null" :scrollable="true" :muted="true">
-                            @foreach($doneItems as $item)
-                                @include('meetings::livewire.agenda-item-preview-card', ['agendaItem' => $item])
-                            @endforeach
-                        </x-ui-kanban-column>
-                    @endif
-                </x-ui-kanban-container>
+                </div>
             </div>
-        </div>
-    </x-ui-page-container>
+        </x-ui-page-sidebar>
+    </x-slot>
+
+    {{-- Board-Container: füllt restliche Breite, Spalten scrollen intern --}}
+    <x-ui-kanban-container sortable="updateAgendaSlotOrder" sortable-group="updateAgendaItemOrder">
+        {{-- Backlog (nicht sortierbar als Gruppe) --}}
+        @if($backlogItems->count() > 0)
+            <x-ui-kanban-column title="Backlog" :sortable-id="null" :scrollable="true" :muted="true">
+                @foreach($backlogItems as $item)
+                    @include('meetings::livewire.agenda-item-preview-card', ['agendaItem' => $item])
+                @endforeach
+            </x-ui-kanban-column>
+        @endif
+
+        {{-- Mittlere Spalten (sortierbar) --}}
+        @foreach($agendaSlots as $slot)
+            <x-ui-kanban-column :title="$slot->name" :sortable-id="$slot->id" :scrollable="true">
+                <x-slot name="headerActions">
+                    @can('update', $appointment)
+                        <button 
+                            wire:click="createAgendaItem('{{ $slot->id }}')" 
+                            class="text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors"
+                            title="Neues Agenda Item"
+                        >
+                            @svg('heroicon-o-plus-circle', 'w-4 h-4')
+                        </button>
+                    @endcan
+                </x-slot>
+
+                @foreach($slot->agendaItems as $item)
+                    @include('meetings::livewire.agenda-item-preview-card', ['agendaItem' => $item])
+                @endforeach
+            </x-ui-kanban-column>
+        @endforeach
+
+        {{-- Erledigt (nicht sortierbar als Gruppe) --}}
+        @if($doneSlot && $doneItems->count() > 0)
+            <x-ui-kanban-column :title="$doneSlot->name" :sortable-id="null" :scrollable="true" :muted="true">
+                @foreach($doneItems as $item)
+                    @include('meetings::livewire.agenda-item-preview-card', ['agendaItem' => $item])
+                @endforeach
+            </x-ui-kanban-column>
+        @endif
+    </x-ui-kanban-container>
 </x-ui-page>
