@@ -50,18 +50,20 @@ class AgendaItem extends Component
     {
         $user = Auth::user();
         if (!$user || !$user->currentTeam) {
-            return [];
+            return collect();
         }
 
-        // Collection zu Array konvertieren für Input-Select
+        // Collection zurückgeben (wie im Planner) - Input-Select kann Collections verarbeiten
         return $user->currentTeam->users()
             ->orderBy('name')
             ->get()
-            ->map(fn($user) => [
-                'id' => $user->id,
-                'name' => $user->fullname ?? $user->name,
-            ])
-            ->toArray();
+            ->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->fullname ?? $user->name,
+                    'email' => $user->email,
+                ];
+            });
     }
 
     public function save()
