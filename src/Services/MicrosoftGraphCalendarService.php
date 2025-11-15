@@ -503,5 +503,137 @@ class MicrosoftGraphCalendarService
             default => 'notResponded',
         };
     }
+
+    /**
+     * Holt verfügbare Räume/Ressourcen aus dem Tenant
+     */
+    public function findRooms(User $user, ?string $startDateTime = null, ?string $endDateTime = null): array
+    {
+        $token = $this->getAccessToken($user);
+        if (!$token) {
+            return [];
+        }
+
+        try {
+            // Zuerst die Room Lists finden
+            $roomListsResponse = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $token,
+            ])->get("{$this->baseUrl}/me/findRooms");
+
+            if (!$roomListsResponse->successful()) {
+                Log::warning('Microsoft Graph: Failed to find room lists', [
+                    'status' => $roomListsResponse->status(),
+                    'body' => $roomListsResponse->body(),
+                ]);
+                return [];
+            }
+
+            $roomLists = $roomListsResponse->json('value', []);
+            $rooms = [];
+
+            // Für jede Room List die Räume holen
+            foreach ($roomLists as $roomList) {
+                $emailAddress = $roomList['emailAddress']['address'] ?? null;
+                if (!$emailAddress) {
+                    continue;
+                }
+
+                // Räume aus dieser Liste holen
+                $roomsResponse = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $token,
+                ])->get("{$this->baseUrl}/me/findRooms(RoomList='{$emailAddress}')");
+
+                if ($roomsResponse->successful()) {
+                    $roomListRooms = $roomsResponse->json('value', []);
+                    foreach ($roomListRooms as $room) {
+                        $rooms[] = [
+                            'id' => $room['emailAddress']['address'] ?? null,
+                            'name' => $room['name'] ?? $room['emailAddress']['name'] ?? $room['emailAddress']['address'],
+                            'email' => $room['emailAddress']['address'] ?? null,
+                            'address' => $room['address'] ?? null,
+                            'capacity' => $room['capacity'] ?? null,
+                        ];
+                    }
+                }
+            }
+
+            // Optional: Verfügbarkeit prüfen, wenn Start/Ende angegeben
+            if ($startDateTime && $endDateTime) {
+                $availableRooms = $this->checkRoomAvailability($user, $rooms, $startDateTime, $endDateTime);
+                return $availableRooms;
+            }
+
+            return $rooms;
+        } catch (\Throwable $e) {
+            Log::error('Microsoft Graph: Exception finding rooms', [
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Prüft Verfügbarkeit von Räumen für einen Zeitraum
+     */
+    protected function checkRoomAvailability(User $user, array $rooms, string $startDateTime, string $endDateTime): array
+    {
+        $token = $this->getAccessToken($user);
+        if (!$token) {
+            return $rooms;
+        }
+
+        $roomEmails = array_column($rooms, 'email');
+        if (empty($roomEmails)) {
+            return $rooms;
+        }
+
+        try {
+            $body = [
+                'schedules' => $roomEmails,
+                'startTime' => [
+                    'dateTime' => $startDateTime,
+                    'timeZone' => config('app.timezone', 'Europe/Berlin'),
+                ],
+                'endTime' => [
+                    'dateTime' => $endDateTime,
+                    'timeZone' => config('app.timezone', 'Europe/Berlin'),
+                ],
+                'availabilityViewInterval' => 60,
+            ];
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $token,
+                'Content-Type' => 'application/json',
+            ])->post("{$this->baseUrl}/me/calendar/getSchedule", $body);
+
+            if (!$response->successful()) {
+                return $rooms;
+            }
+
+            $scheduleData = $response->json('value', []);
+            $roomAvailability = [];
+
+            foreach ($scheduleData as $schedule) {
+                $email = $schedule['scheduleId'] ?? null;
+                $availability = $schedule['availabilityView'] ?? '';
+                
+                // Prüfe ob der Raum verfügbar ist (keine 'busy' Slots)
+                $isAvailable = !str_contains($availability, '1'); // '1' = busy
+                $roomAvailability[$email] = $isAvailable;
+            }
+
+            // Markiere Räume als verfügbar/nicht verfügbar
+            foreach ($rooms as &$room) {
+                $room['available'] = $roomAvailability[$room['email']] ?? true;
+            }
+
+            return $rooms;
+        } catch (\Throwable $e) {
+            Log::error('Microsoft Graph: Exception checking room availability', [
+                'error' => $e->getMessage(),
+            ]);
+            return $rooms;
+        }
+    }
 }
 

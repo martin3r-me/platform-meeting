@@ -29,33 +29,152 @@
 
                         {{-- Datum & Zeit --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <x-ui-input-datetime
-                                name="start_date"
-                                label="Start"
-                                :value="$start_date"
-                                wire:model="start_date"
-                                required
-                                :errorKey="'start_date'"
-                            />
+                            <div>
+                                <x-ui-input-datetime
+                                    name="start_date"
+                                    label="Start"
+                                    :value="$start_date"
+                                    required
+                                    :errorKey="'start_date'"
+                                />
+                                <div x-data x-init="
+                                    const input = document.getElementById('start_date');
+                                    if (input) {
+                                        const observer = new MutationObserver(() => {
+                                            if (input.value) {
+                                                $wire.set('start_date', input.value);
+                                                $wire.call('updatedStartDate', input.value);
+                                            }
+                                        });
+                                        observer.observe(input, { attributes: true, attributeFilter: ['value'] });
+                                        input.addEventListener('input', () => {
+                                            $wire.set('start_date', input.value);
+                                            $wire.call('updatedStartDate', input.value);
+                                        });
+                                    }
+                                "></div>
+                            </div>
 
-                            <x-ui-input-datetime
-                                name="end_date"
-                                label="Ende"
-                                :value="$end_date"
-                                wire:model="end_date"
-                                required
-                                :errorKey="'end_date'"
-                            />
+                            <div>
+                                <x-ui-input-datetime
+                                    name="end_date"
+                                    label="Ende"
+                                    :value="$end_date"
+                                    required
+                                    :errorKey="'end_date'"
+                                />
+                                <div x-data x-init="
+                                    const input = document.getElementById('end_date');
+                                    if (input) {
+                                        const observer = new MutationObserver(() => {
+                                            if (input.value) {
+                                                $wire.set('end_date', input.value);
+                                                $wire.call('updatedEndDate', input.value);
+                                            }
+                                        });
+                                        observer.observe(input, { attributes: true, attributeFilter: ['value'] });
+                                        input.addEventListener('input', () => {
+                                            $wire.set('end_date', input.value);
+                                            $wire.call('updatedEndDate', input.value);
+                                        });
+                                    }
+                                "></div>
+                            </div>
                         </div>
 
-                        {{-- Ort --}}
-                        <x-ui-input-text
-                            name="location"
-                            label="Ort"
-                            wire:model="location"
-                            placeholder="z.B. Konferenzraum A oder Teams-Link"
-                            :errorKey="'location'"
-                        />
+                        {{-- Ort / Raum --}}
+                        <div>
+                            <label class="block text-sm font-medium text-[var(--ui-secondary)] mb-2">
+                                Ort / Raum
+                            </label>
+                            <div class="space-y-3">
+                                {{-- Auswahl: Manuell oder Raum --}}
+                                <div class="flex gap-4">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            wire:model.live="location_type" 
+                                            value="manual"
+                                            class="text-[var(--ui-primary)] focus:ring-[var(--ui-primary)]"
+                                        />
+                                        <span class="text-sm text-[var(--ui-secondary)]">Manuell eingeben</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input 
+                                            type="radio" 
+                                            wire:model.live="location_type" 
+                                            value="room"
+                                            class="text-[var(--ui-primary)] focus:ring-[var(--ui-primary)]"
+                                        />
+                                        <span class="text-sm text-[var(--ui-secondary)]">Raum auswählen</span>
+                                    </label>
+                                </div>
+
+                                {{-- Manuelle Eingabe --}}
+                                @if($location_type === 'manual')
+                                    <x-ui-input-text
+                                        name="location"
+                                        label=""
+                                        wire:model="location"
+                                        placeholder="z.B. Konferenzraum A oder Teams-Link"
+                                        :errorKey="'location'"
+                                    />
+                                @endif
+
+                                {{-- Raum-Auswahl --}}
+                                @if($location_type === 'room')
+                                    <div>
+                                        @if(empty($rooms) && $start_date && $end_date)
+                                            <div class="text-sm text-[var(--ui-muted)] p-3 bg-[var(--ui-muted-5)] rounded-md">
+                                                Lade Räume...
+                                            </div>
+                                        @elseif(empty($rooms))
+                                            <div class="text-sm text-[var(--ui-muted)] p-3 bg-[var(--ui-muted-5)] rounded-md">
+                                                Bitte zuerst Start- und Endzeit auswählen, um verfügbare Räume zu sehen.
+                                            </div>
+                                        @else
+                                            <div class="space-y-2 max-h-64 overflow-y-auto border border-[var(--ui-border)]/60 rounded-md p-3">
+                                                @foreach($rooms as $room)
+                                                    <label class="flex items-center gap-3 p-2 rounded-md hover:bg-[var(--ui-muted-5)] cursor-pointer {{ $selected_room_id === $room['email'] ? 'bg-[var(--ui-primary-5)] border border-[var(--ui-primary)]' : '' }}">
+                                                        <input 
+                                                            type="radio" 
+                                                            wire:model.live="selected_room_id" 
+                                                            value="{{ $room['email'] }}"
+                                                            class="text-[var(--ui-primary)] focus:ring-[var(--ui-primary)]"
+                                                        />
+                                                        <div class="flex-1">
+                                                            <div class="flex items-center gap-2">
+                                                                <div class="text-sm font-medium text-[var(--ui-secondary)]">
+                                                                    {{ $room['name'] }}
+                                                                </div>
+                                                                @if(isset($room['available']) && !$room['available'])
+                                                                    <x-ui-badge variant="danger" size="xs">Belegt</x-ui-badge>
+                                                                @elseif(isset($room['available']) && $room['available'])
+                                                                    <x-ui-badge variant="success" size="xs">Verfügbar</x-ui-badge>
+                                                                @endif
+                                                            </div>
+                                                            @if($room['capacity'])
+                                                                <div class="text-xs text-[var(--ui-muted)]">
+                                                                    Kapazität: {{ $room['capacity'] }} Personen
+                                                                </div>
+                                                            @endif
+                                                            @if($room['address'])
+                                                                <div class="text-xs text-[var(--ui-muted)]">
+                                                                    {{ $room['address'] }}
+                                                                </div>
+                                                            @endif
+                                                        </div>
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                        @error('selected_room_id')
+                                            <p class="mt-1 text-sm text-[var(--ui-danger)]">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
 
                         {{-- Teilnehmer --}}
                         <div>
