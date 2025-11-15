@@ -7,12 +7,31 @@ use Illuminate\Support\Facades\Auth;
 use Platform\Meetings\Models\Meeting as MeetingModel;
 use Platform\Meetings\Models\MeetingAgendaSlot;
 use Platform\Meetings\Models\MeetingAgendaItem;
+use Platform\Meetings\Models\Appointment;
+use Platform\Meetings\Services\MicrosoftGraphCalendarService;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 
 class Meeting extends Component
 {
     public MeetingModel $meeting;
+    
+    // Agenda Item Editing
+    public $editingAgendaItemId = null;
+    public $editingAgendaItem = [
+        'title' => '',
+        'description' => '',
+        'duration_minutes' => null,
+        'assigned_to_id' => null,
+    ];
+    
+    // Appointment Creation
+    public $showCreateAppointmentModal = false;
+    public $createAppointment = [
+        'user_id' => null,
+        'start_date' => '',
+        'end_date' => '',
+    ];
 
     #[On('updateMeeting')]
     public function updateMeeting()
@@ -113,6 +132,115 @@ class Meeting extends Component
         ]);
 
         $this->dispatch('agendaSlotUpdated');
+    }
+
+    public function editAgendaItem($itemId)
+    {
+        $this->authorize('update', $this->meeting);
+        
+        $item = MeetingAgendaItem::findOrFail($itemId);
+        $this->editingAgendaItemId = $itemId;
+        $this->editingAgendaItem = [
+            'title' => $item->title,
+            'description' => $item->description ?? '',
+            'duration_minutes' => $item->duration_minutes,
+            'assigned_to_id' => $item->assigned_to_id,
+        ];
+    }
+
+    public function saveAgendaItem()
+    {
+        $this->authorize('update', $this->meeting);
+        
+        $this->validate([
+            'editingAgendaItem.title' => 'required|string|max:255',
+            'editingAgendaItem.description' => 'nullable|string',
+            'editingAgendaItem.duration_minutes' => 'nullable|integer|min:1',
+            'editingAgendaItem.assigned_to_id' => 'nullable|exists:users,id',
+        ]);
+
+        $item = MeetingAgendaItem::findOrFail($this->editingAgendaItemId);
+        $item->update([
+            'title' => $this->editingAgendaItem['title'],
+            'description' => $this->editingAgendaItem['description'],
+            'duration_minutes' => $this->editingAgendaItem['duration_minutes'],
+            'assigned_to_id' => $this->editingAgendaItem['assigned_to_id'],
+        ]);
+
+        $this->cancelEditAgendaItem();
+        $this->dispatch('agendaSlotUpdated');
+    }
+
+    public function cancelEditAgendaItem()
+    {
+        $this->editingAgendaItemId = null;
+        $this->editingAgendaItem = [
+            'title' => '',
+            'description' => '',
+            'duration_minutes' => null,
+            'assigned_to_id' => null,
+        ];
+    }
+
+    public function deleteAgendaItem($itemId)
+    {
+        $this->authorize('update', $this->meeting);
+        
+        MeetingAgendaItem::findOrFail($itemId)->delete();
+        $this->dispatch('agendaSlotUpdated');
+    }
+
+    public function openCreateAppointmentModal()
+    {
+        $this->authorize('update', $this->meeting);
+        
+        $this->createAppointment = [
+            'user_id' => null,
+            'start_date' => $this->meeting->start_date->format('Y-m-d\TH:i'),
+            'end_date' => $this->meeting->end_date->format('Y-m-d\TH:i'),
+        ];
+        $this->showCreateAppointmentModal = true;
+    }
+
+    public function closeCreateAppointmentModal()
+    {
+        $this->showCreateAppointmentModal = false;
+        $this->createAppointment = [
+            'user_id' => null,
+            'start_date' => '',
+            'end_date' => '',
+        ];
+    }
+
+    public function createAppointment()
+    {
+        $this->authorize('update', $this->meeting);
+        
+        // Konvertiere datetime-local Format falls nötig
+        if (!empty($this->createAppointment['start_date']) && str_contains($this->createAppointment['start_date'], 'T')) {
+            $this->createAppointment['start_date'] = str_replace('T', ' ', $this->createAppointment['start_date']) . ':00';
+        }
+        if (!empty($this->createAppointment['end_date']) && str_contains($this->createAppointment['end_date'], 'T')) {
+            $this->createAppointment['end_date'] = str_replace('T', ' ', $this->createAppointment['end_date']) . ':00';
+        }
+        
+        $this->validate([
+            'createAppointment.user_id' => 'required|exists:users,id',
+            'createAppointment.start_date' => 'required|date',
+            'createAppointment.end_date' => 'required|date|after:createAppointment.start_date',
+        ]);
+
+        $appointment = Appointment::create([
+            'meeting_id' => $this->meeting->id,
+            'user_id' => $this->createAppointment['user_id'],
+            'sync_status' => 'pending',
+        ]);
+
+        // Zu Microsoft Calendar syncen (wird später implementiert)
+        // TODO: Eigene Methode für einzelne User-Events implementieren
+
+        $this->closeCreateAppointmentModal();
+        $this->dispatch('appointmentCreated');
     }
 
     #[Computed]
@@ -222,12 +350,25 @@ class Meeting extends Component
         // Aktive Slots (ohne Done)
         $activeSlots = $agendaSlots->reject(fn($slot) => $slot->is_done_slot);
 
+        // Appointments laden
+        $appointments = $this->meeting->appointments()
+            ->with('user')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Team-Mitglieder für Appointment-Erstellung
+        $teamMembers = $this->meeting->team->users()
+            ->orderBy('name')
+            ->get();
+
         return view('meetings::livewire.meeting', [
             'agendaSlots' => $activeSlots,
             'backlogItems' => $backlogItems,
             'doneItems' => $doneItems,
             'doneSlot' => $doneSlot,
             'activities' => $this->activities,
+            'appointments' => $appointments,
+            'teamMembers' => $teamMembers,
         ])->layout('platform::layouts.app');
     }
 }

@@ -17,6 +17,12 @@
                                     Zum Dashboard
                                 </span>
                             </x-ui-button>
+                            <x-ui-button variant="primary" size="sm" wire:click="openCreateAppointmentModal" class="w-full">
+                                <span class="flex items-center gap-2">
+                                    @svg('heroicon-o-plus-circle', 'w-4 h-4')
+                                    Neuer Termin
+                                </span>
+                            </x-ui-button>
                         @endcan
                         @can('delete', $meeting)
                             <x-ui-confirm-button 
@@ -94,6 +100,34 @@
                         @endforeach
                     </div>
                 </div>
+
+                {{-- Appointments --}}
+                @if($appointments->count() > 0)
+                    <div>
+                        <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider mb-4">Termine</h3>
+                        <div class="space-y-2">
+                            @foreach($appointments as $appointment)
+                                <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
+                                    <div class="flex items-center gap-2">
+                                        @svg('heroicon-o-calendar-days', 'w-4 h-4 text-[var(--ui-muted)]')
+                                        <span class="text-sm text-[var(--ui-secondary)]">{{ $appointment->user->fullname ?? $appointment->user->name }}</span>
+                                    </div>
+                                    @php
+                                        $syncColors = [
+                                            'synced' => 'success',
+                                            'pending' => 'warning',
+                                            'error' => 'danger',
+                                        ];
+                                        $syncColor = $syncColors[$appointment->sync_status] ?? 'muted';
+                                    @endphp
+                                    <x-ui-badge :variant="$syncColor" size="xs">
+                                        {{ ucfirst($appointment->sync_status) }}
+                                    </x-ui-badge>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
             </div>
         </x-ui-page-sidebar>
     </x-slot>
@@ -140,85 +174,306 @@
     </x-slot>
 
     <x-ui-page-container>
-        <div class="p-6">
-        {{-- Beschreibung --}}
-        @if($meeting->description)
-            <div class="mb-6">
-                <h3 class="text-sm font-semibold mb-2">Beschreibung</h3>
-                <div class="prose prose-sm max-w-none">
-                    {!! nl2br(e($meeting->description)) !!}
+        {{-- Meta-Daten Header --}}
+        <div class="bg-white rounded-xl border border-[var(--ui-border)]/60 shadow-sm overflow-hidden mb-6">
+            <div class="p-6 lg:p-8">
+                <div class="flex items-start justify-between gap-4 mb-4">
+                    <div class="flex-1 min-w-0">
+                        <h1 class="text-3xl font-bold text-[var(--ui-secondary)] mb-4 tracking-tight leading-tight">{{ $meeting->title }}</h1>
+                        
+                        {{-- Meta Informationen --}}
+                        <div class="space-y-2">
+                            {{-- Erste Zeile: Team & Erstellt von --}}
+                            <div class="flex flex-wrap items-center gap-6 text-sm text-[var(--ui-muted)]">
+                                @if($meeting->team)
+                                    <span class="flex items-center gap-2">
+                                        @svg('heroicon-o-user-group', 'w-4 h-4')
+                                        <span>Team: <span class="text-[var(--ui-secondary)]">{{ $meeting->team->name }}</span></span>
+                                    </span>
+                                @endif
+                                @if($meeting->user)
+                                    <span class="flex items-center gap-2">
+                                        @svg('heroicon-o-user-circle', 'w-4 h-4')
+                                        <span>Erstellt von: <span class="text-[var(--ui-secondary)]">{{ $meeting->user->fullname ?? $meeting->user->name }}</span></span>
+                                    </span>
+                                @endif
+                            </div>
+                            
+                            {{-- Zweite Zeile: Datum & Ort --}}
+                            <div class="flex flex-wrap items-center gap-6 text-sm text-[var(--ui-muted)]">
+                                <span class="flex items-center gap-2">
+                                    @svg('heroicon-o-calendar', 'w-4 h-4')
+                                    <span>{{ $meeting->start_date->format('d.m.Y H:i') }} - {{ $meeting->end_date->format('H:i') }}</span>
+                                </span>
+                                @if($meeting->location)
+                                    <span class="flex items-center gap-2">
+                                        @svg('heroicon-o-map-pin', 'w-4 h-4')
+                                        <span>{{ $meeting->location }}</span>
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {{-- Status Badge --}}
+                    <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                        <x-ui-badge variant="primary" size="sm">{{ ucfirst($meeting->status) }}</x-ui-badge>
+                    </div>
                 </div>
             </div>
-        @endif
+        </div>
 
-        {{-- Agenda Kanban Board --}}
-        <div>
-            <h3 class="text-lg font-semibold mb-4">Agenda</h3>
-            
-            <x-ui-kanban-container sortable="updateAgendaSlotOrder" sortable-group="updateAgendaItemOrder">
-                {{-- Backlog --}}
-                @if($backlogItems->count() > 0)
-                    <x-ui-kanban-column title="Backlog" :sortable-id="null" :scrollable="true" :muted="true">
-                        @foreach($backlogItems as $item)
-                            <x-ui-kanban-card :title="$item->title" :sortable-id="$item->id" wire:key="agenda-item-{{ $item->id }}">
-                                @if($item->description)
-                                    <div class="text-xs text-[var(--ui-muted)] mt-1">
-                                        {{ Str::limit($item->description, 100) }}
-                                    </div>
-                                @endif
-                            </x-ui-kanban-card>
-                        @endforeach
-                    </x-ui-kanban-column>
-                @endif
+        <div class="p-6">
+            {{-- Beschreibung --}}
+            @if($meeting->description)
+                <div class="mb-6">
+                    <h3 class="text-sm font-semibold mb-2">Beschreibung</h3>
+                    <div class="prose prose-sm max-w-none">
+                        {!! nl2br(e($meeting->description)) !!}
+                    </div>
+                </div>
+            @endif
 
-                {{-- Agenda Slots --}}
-                @foreach($agendaSlots as $slot)
-                    <x-ui-kanban-column :title="$slot->name" :sortable-id="$slot->id" :scrollable="true">
-                        <x-slot name="headerActions">
-                            @can('update', $meeting)
-                                <button 
-                                    wire:click="createAgendaItem('{{ $slot->id }}')" 
-                                    class="text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors"
-                                    title="Neues Agenda Item"
-                                >
+            {{-- Agenda Kanban Board --}}
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold">Agenda</h3>
+                    @can('update', $meeting)
+                        <div class="flex items-center gap-2">
+                            <x-ui-button variant="secondary-outline" size="sm" wire:click="createAgendaSlot">
+                                <span class="flex items-center gap-2">
                                     @svg('heroicon-o-plus-circle', 'w-4 h-4')
-                                </button>
-                            @endcan
-                        </x-slot>
+                                    Neue Spalte
+                                </span>
+                            </x-ui-button>
+                        </div>
+                    @endcan
+                </div>
+                
+                <x-ui-kanban-container sortable="updateAgendaSlotOrder" sortable-group="updateAgendaItemOrder">
+                    {{-- Backlog --}}
+                    @if($backlogItems->count() > 0)
+                        <x-ui-kanban-column title="Backlog" :sortable-id="null" :scrollable="true" :muted="true">
+                            @foreach($backlogItems as $item)
+                                <x-ui-kanban-card :title="$item->title" :sortable-id="$item->id" wire:key="agenda-item-{{ $item->id }}">
+                                    @if($editingAgendaItemId == $item->id)
+                                        {{-- Edit Mode --}}
+                                        <div class="space-y-3">
+                                            <x-ui-input-text
+                                                wire:model="editingAgendaItem.title"
+                                                label="Titel"
+                                                required
+                                            />
+                                            <x-ui-input-textarea
+                                                wire:model="editingAgendaItem.description"
+                                                label="Beschreibung"
+                                                rows="3"
+                                            />
+                                            <x-ui-input-text
+                                                wire:model="editingAgendaItem.duration_minutes"
+                                                label="Dauer (Minuten)"
+                                                type="number"
+                                            />
+                                            <x-ui-input-select
+                                                wire:model="editingAgendaItem.assigned_to_id"
+                                                label="Zugewiesen an"
+                                                :options="$teamMembers"
+                                                optionValue="id"
+                                                optionLabel="name"
+                                                :nullable="true"
+                                                nullLabel="Niemand"
+                                            />
+                                            <div class="flex items-center gap-2">
+                                                <x-ui-button variant="primary" size="sm" wire:click="saveAgendaItem">Speichern</x-ui-button>
+                                                <x-ui-button variant="secondary-outline" size="sm" wire:click="cancelEditAgendaItem">Abbrechen</x-ui-button>
+                                            </div>
+                                        </div>
+                                    @else
+                                        {{-- View Mode --}}
+                                        @if($item->description)
+                                            <div class="text-xs text-[var(--ui-muted)] mt-1">
+                                                {{ Str::limit($item->description, 100) }}
+                                            </div>
+                                        @endif
+                                        @if($item->duration_minutes)
+                                            <div class="text-xs text-[var(--ui-muted)] mt-1">
+                                                {{ $item->duration_minutes }} Min.
+                                            </div>
+                                        @endif
+                                        @if($item->assignedTo)
+                                            <div class="text-xs text-[var(--ui-muted)] mt-1">
+                                                @svg('heroicon-o-user', 'w-3 h-3 inline')
+                                                {{ $item->assignedTo->name }}
+                                            </div>
+                                        @endif
+                                        @can('update', $meeting)
+                                            <div class="flex items-center gap-2 mt-2 pt-2 border-t border-[var(--ui-border)]/40">
+                                                <button 
+                                                    wire:click="editAgendaItem({{ $item->id }})"
+                                                    class="text-xs text-[var(--ui-primary)] hover:underline"
+                                                >
+                                                    Bearbeiten
+                                                </button>
+                                                <button 
+                                                    wire:click="deleteAgendaItem({{ $item->id }})"
+                                                    wire:confirm="Wirklich löschen?"
+                                                    class="text-xs text-[var(--ui-danger)] hover:underline"
+                                                >
+                                                    Löschen
+                                                </button>
+                                            </div>
+                                        @endcan
+                                    @endif
+                                </x-ui-kanban-card>
+                            @endforeach
+                        </x-ui-kanban-column>
+                    @endif
 
-                        @foreach($slot->agendaItems as $item)
-                            <x-ui-kanban-card :title="$item->title" :sortable-id="$item->id" wire:key="agenda-item-{{ $item->id }}">
-                                @if($item->description)
-                                    <div class="text-xs text-[var(--ui-muted)] mt-1">
-                                        {{ Str::limit($item->description, 100) }}
-                                    </div>
-                                @endif
-                                @if($item->duration_minutes)
-                                    <div class="text-xs text-[var(--ui-muted)] mt-1">
-                                        {{ $item->duration_minutes }} Min.
-                                    </div>
-                                @endif
-                            </x-ui-kanban-card>
-                        @endforeach
-                    </x-ui-kanban-column>
-                @endforeach
+                    {{-- Agenda Slots --}}
+                    @foreach($agendaSlots as $slot)
+                        <x-ui-kanban-column :title="$slot->name" :sortable-id="$slot->id" :scrollable="true">
+                            <x-slot name="headerActions">
+                                @can('update', $meeting)
+                                    <button 
+                                        wire:click="createAgendaItem('{{ $slot->id }}')" 
+                                        class="text-[var(--ui-muted)] hover:text-[var(--ui-secondary)] transition-colors"
+                                        title="Neues Agenda Item"
+                                    >
+                                        @svg('heroicon-o-plus-circle', 'w-4 h-4')
+                                    </button>
+                                @endcan
+                            </x-slot>
 
-                {{-- Done --}}
-                @if($doneSlot && $doneItems->count() > 0)
-                    <x-ui-kanban-column :title="$doneSlot->name" :sortable-id="null" :scrollable="true" :muted="true">
-                        @foreach($doneItems as $item)
-                            <x-ui-kanban-card :title="$item->title" :sortable-id="$item->id" wire:key="agenda-item-{{ $item->id }}">
-                                @if($item->description)
-                                    <div class="text-xs text-[var(--ui-muted)] mt-1">
-                                        {{ Str::limit($item->description, 100) }}
-                                    </div>
-                                @endif
-                            </x-ui-kanban-card>
-                        @endforeach
-                    </x-ui-kanban-column>
-                @endif
-            </x-ui-kanban-container>
+                            @foreach($slot->agendaItems as $item)
+                                <x-ui-kanban-card :title="$item->title" :sortable-id="$item->id" wire:key="agenda-item-{{ $item->id }}">
+                                    @if($editingAgendaItemId == $item->id)
+                                        {{-- Edit Mode --}}
+                                        <div class="space-y-3">
+                                            <x-ui-input-text
+                                                wire:model="editingAgendaItem.title"
+                                                label="Titel"
+                                                required
+                                            />
+                                            <x-ui-input-textarea
+                                                wire:model="editingAgendaItem.description"
+                                                label="Beschreibung"
+                                                rows="3"
+                                            />
+                                            <x-ui-input-text
+                                                wire:model="editingAgendaItem.duration_minutes"
+                                                label="Dauer (Minuten)"
+                                                type="number"
+                                            />
+                                            <x-ui-input-select
+                                                wire:model="editingAgendaItem.assigned_to_id"
+                                                label="Zugewiesen an"
+                                                :options="$teamMembers"
+                                                optionValue="id"
+                                                optionLabel="name"
+                                                :nullable="true"
+                                                nullLabel="Niemand"
+                                            />
+                                            <div class="flex items-center gap-2">
+                                                <x-ui-button variant="primary" size="sm" wire:click="saveAgendaItem">Speichern</x-ui-button>
+                                                <x-ui-button variant="secondary-outline" size="sm" wire:click="cancelEditAgendaItem">Abbrechen</x-ui-button>
+                                            </div>
+                                        </div>
+                                    @else
+                                        {{-- View Mode --}}
+                                        @if($item->description)
+                                            <div class="text-xs text-[var(--ui-muted)] mt-1">
+                                                {{ Str::limit($item->description, 100) }}
+                                            </div>
+                                        @endif
+                                        @if($item->duration_minutes)
+                                            <div class="text-xs text-[var(--ui-muted)] mt-1">
+                                                {{ $item->duration_minutes }} Min.
+                                            </div>
+                                        @endif
+                                        @if($item->assignedTo)
+                                            <div class="text-xs text-[var(--ui-muted)] mt-1">
+                                                @svg('heroicon-o-user', 'w-3 h-3 inline')
+                                                {{ $item->assignedTo->name }}
+                                            </div>
+                                        @endif
+                                        @can('update', $meeting)
+                                            <div class="flex items-center gap-2 mt-2 pt-2 border-t border-[var(--ui-border)]/40">
+                                                <button 
+                                                    wire:click="editAgendaItem({{ $item->id }})"
+                                                    class="text-xs text-[var(--ui-primary)] hover:underline"
+                                                >
+                                                    Bearbeiten
+                                                </button>
+                                                <button 
+                                                    wire:click="deleteAgendaItem({{ $item->id }})"
+                                                    wire:confirm="Wirklich löschen?"
+                                                    class="text-xs text-[var(--ui-danger)] hover:underline"
+                                                >
+                                                    Löschen
+                                                </button>
+                                            </div>
+                                        @endcan
+                                    @endif
+                                </x-ui-kanban-card>
+                            @endforeach
+                        </x-ui-kanban-column>
+                    @endforeach
+
+                    {{-- Done --}}
+                    @if($doneSlot && $doneItems->count() > 0)
+                        <x-ui-kanban-column :title="$doneSlot->name" :sortable-id="null" :scrollable="true" :muted="true">
+                            @foreach($doneItems as $item)
+                                <x-ui-kanban-card :title="$item->title" :sortable-id="$item->id" wire:key="agenda-item-{{ $item->id }}">
+                                    @if($item->description)
+                                        <div class="text-xs text-[var(--ui-muted)] mt-1">
+                                            {{ Str::limit($item->description, 100) }}
+                                        </div>
+                                    @endif
+                                </x-ui-kanban-card>
+                            @endforeach
+                        </x-ui-kanban-column>
+                    @endif
+                </x-ui-kanban-container>
+            </div>
         </div>
     </x-ui-page-container>
 </x-ui-page>
 
+{{-- Create Appointment Modal --}}
+@if($showCreateAppointmentModal)
+    <x-ui-modal wire:model="showCreateAppointmentModal" title="Neuen Termin anlegen">
+        <div class="space-y-4">
+            <x-ui-input-select
+                wire:model="createAppointment.user_id"
+                label="Teilnehmer"
+                :options="$teamMembers"
+                optionValue="id"
+                optionLabel="name"
+                :nullable="false"
+                nullLabel="Teilnehmer auswählen"
+                required
+            />
+            <x-ui-input-datetime
+                wire:model="createAppointment.start_date"
+                label="Startdatum & Zeit"
+                required
+            />
+            <x-ui-input-datetime
+                wire:model="createAppointment.end_date"
+                label="Enddatum & Zeit"
+                required
+            />
+        </div>
+        
+        <x-slot name="footer">
+            <div class="flex items-center justify-end gap-2">
+                <x-ui-button variant="secondary-outline" size="sm" wire:click="closeCreateAppointmentModal">
+                    Abbrechen
+                </x-ui-button>
+                <x-ui-button variant="primary" size="sm" wire:click="createAppointment">
+                    Termin anlegen
+                </x-ui-button>
+            </div>
+        </x-slot>
+    </x-ui-modal>
+@endif
