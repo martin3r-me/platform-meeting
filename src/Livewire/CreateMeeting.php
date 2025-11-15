@@ -191,8 +191,13 @@ class CreateMeeting extends Component
             'response_status' => 'accepted',
         ]);
 
-        // Weitere Teilnehmer hinzufügen
+        // Weitere Teilnehmer hinzufügen (Organizer überspringen)
         foreach ($this->participant_ids as $participantId) {
+            // Überspringe den Organizer, da er bereits hinzugefügt wurde
+            if ($participantId == $user->id) {
+                continue;
+            }
+            
             MeetingParticipant::create([
                 'meeting_id' => $meeting->id,
                 'user_id' => $participantId,
