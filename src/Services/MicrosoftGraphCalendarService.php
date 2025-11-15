@@ -814,11 +814,42 @@ class MicrosoftGraphCalendarService
                     'user_id' => $user->id,
                     'status' => $response->status(),
                     'body' => $response->body(),
+                    'url' => $url,
+                    'params' => $params,
                 ]);
+                
+                // Detaillierte Fehlerbehandlung
+                if ($response->status() === 401) {
+                    throw new \RuntimeException('Token ungültig oder abgelaufen. Bitte einmal über Azure SSO einloggen.');
+                } elseif ($response->status() === 403) {
+                    throw new \RuntimeException('Keine Berechtigung für Kalender-Zugriff. Bitte Scopes prüfen.');
+                }
+                
                 return [];
             }
 
             $events = $response->json('value', []);
+            
+            // Prüfe Token-Scopes (falls verfügbar)
+            $tokenModel = \Platform\Core\Models\MicrosoftOAuthToken::where('user_id', $user->id)->first();
+            $scopes = $tokenModel?->scopes ?? [];
+            
+            Log::info('Microsoft Graph: Events fetched', [
+                'user_id' => $user->id,
+                'count' => count($events),
+                'start_date' => $startDate->toIso8601String(),
+                'end_date' => $endDate->toIso8601String(),
+                'token_scopes' => $scopes,
+                'has_calendar_scope' => in_array('Calendars.ReadWrite', $scopes) || in_array('Calendars.Read', $scopes),
+            ]);
+            
+            // Warnung wenn keine Calendar-Scopes vorhanden
+            if (!in_array('Calendars.ReadWrite', $scopes) && !in_array('Calendars.Read', $scopes) && !in_array('Calendars.ReadWrite.Shared', $scopes)) {
+                Log::warning('Microsoft Graph: Token hat keine Calendar-Scopes. Nur User.Read vorhanden. User muss sich über Azure SSO mit Calendar-Scopes einloggen.', [
+                    'user_id' => $user->id,
+                    'current_scopes' => $scopes,
+                ]);
+            }
 
             // Wenn es mehr Events gibt, weitere Seiten holen
             $nextLink = $response->json('@odata.nextLink');

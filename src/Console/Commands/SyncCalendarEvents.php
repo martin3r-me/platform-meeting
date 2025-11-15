@@ -63,6 +63,18 @@ class SyncCalendarEvents extends Command
                 }
                 
                 // Prüfe Token-Status
+                $scopes = $tokenModel->scopes ?? [];
+                $hasCalendarScope = in_array('Calendars.ReadWrite', $scopes) || 
+                                   in_array('Calendars.Read', $scopes) || 
+                                   in_array('Calendars.ReadWrite.Shared', $scopes);
+                
+                if (!$hasCalendarScope) {
+                    $this->warn("  → Token hat keine Calendar-Scopes!");
+                    $this->line("     Aktuelle Scopes: " . implode(', ', $scopes ?: ['Keine']));
+                    $this->line("     User muss sich einmal über Azure SSO neu einloggen, um Calendar-Scopes zu erhalten.");
+                    continue;
+                }
+                
                 if ($tokenModel->isExpired()) {
                     if ($tokenModel->refresh_token) {
                         $this->line("  → Token abgelaufen, versuche automatisches Refresh...");
@@ -79,17 +91,27 @@ class SyncCalendarEvents extends Command
                 
                 // Events für diesen User holen
                 try {
+                    $this->line("  → Suche Events von " . $startDate->format('d.m.Y H:i') . " bis " . $endDate->format('d.m.Y H:i'));
                     $events = $calendarService->getFutureEvents($user, $startDate, $endDate);
                     
                     if (empty($events)) {
-                        $this->info("  → Token verfügbar, aber keine Events im Kalender gefunden");
+                        $this->warn("  → Token verfügbar, aber keine Events im Kalender gefunden");
+                        $this->line("     Prüfe bitte die Logs für Details (Microsoft Graph API Response)");
                         continue;
                     }
 
                     $this->info("  → " . count($events) . " Event(s) gefunden");
                 } catch (\RuntimeException $e) {
                     // Token-Problem wurde bereits oben geprüft, aber falls doch noch ein Problem auftritt
-                    $this->warn("  → " . $e->getMessage());
+                    $this->error("  → " . $e->getMessage());
+                    continue;
+                } catch (\Throwable $e) {
+                    $this->error("  → Fehler beim Abrufen der Events: " . $e->getMessage());
+                    Log::error('Failed to get events for user', [
+                        'user_id' => $user->id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
                     continue;
                 }
 
