@@ -311,15 +311,21 @@ class Appointment extends Component
         // === BOARD-GRUPPEN ZUSAMMENSTELLEN ===
         $groups = collect([$backlog])->concat($slots)->push($completedGroup);
 
-        // Team-Mitglieder für Zuweisung
-        $teamMembers = $this->appointment->meeting->team->users()
-            ->orderBy('name')
-            ->get();
+        // Meeting-Participants für Zuweisung (nur Beteiligte, wie im Planner)
+        $meetingParticipants = $this->appointment->meeting->participants()
+            ->with('user')
+            ->get()
+            ->map(function ($participant) {
+                return $participant->user;
+            })
+            ->filter()
+            ->sortBy('name')
+            ->values();
 
         return view('meetings::livewire.appointment', [
             'groups' => $groups,
             'activities' => $this->activities,
-            'teamMembers' => $teamMembers,
+            'teamMembers' => $meetingParticipants,
             'agendaStats' => $this->agendaStats,
         ])->layout('platform::layouts.app');
     }

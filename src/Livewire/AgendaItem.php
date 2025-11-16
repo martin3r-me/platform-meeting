@@ -48,12 +48,36 @@ class AgendaItem extends Component
     #[Computed]
     public function teamUsers()
     {
+        // Meeting-Participants für Verantwortliche-Auswahl (wie im Planner: nur Projekt-User)
+        if ($this->agendaItem->appointment->meeting) {
+            $meetingParticipants = $this->agendaItem->appointment->meeting
+                ->participants()
+                ->with('user')
+                ->get()
+                ->map(function ($participant) {
+                    $user = $participant->user;
+                    if (!$user) {
+                        return null;
+                    }
+                    return [
+                        'id' => $user->id,
+                        'name' => $user->fullname ?? $user->name,
+                        'email' => $user->email,
+                    ];
+                })
+                ->filter()
+                ->sortBy('name')
+                ->values();
+            
+            return $meetingParticipants;
+        }
+        
+        // Fallback: Team-Mitglieder (falls kein Meeting vorhanden)
         $user = Auth::user();
         if (!$user || !$user->currentTeam) {
             return collect();
         }
 
-        // Collection zurückgeben (wie im Planner) - Input-Select kann Collections verarbeiten
         return $user->currentTeam->users()
             ->orderBy('name')
             ->get()

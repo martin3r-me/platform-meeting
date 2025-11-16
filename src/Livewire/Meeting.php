@@ -333,6 +333,43 @@ class Meeting extends Component
         return "{$userName} hat das Meeting {$translatedName}";
     }
 
+    public function addParticipant($userId)
+    {
+        $this->authorize('update', $this->meeting);
+        
+        // Prüfen ob User bereits Teilnehmer ist
+        $existingParticipant = $this->meeting->participants()->where('user_id', $userId)->first();
+        if ($existingParticipant) {
+            return; // User bereits Teilnehmer
+        }
+        
+        // Neuen Teilnehmer hinzufügen
+        \Platform\Meetings\Models\MeetingParticipant::create([
+            'meeting_id' => $this->meeting->id,
+            'user_id' => $userId,
+            'role' => 'attendee',
+            'response_status' => 'notResponded',
+        ]);
+        
+        $this->meeting->refresh();
+    }
+
+    public function removeParticipant($userId)
+    {
+        $this->authorize('update', $this->meeting);
+        
+        // Organizer kann nicht entfernt werden
+        if ($userId == $this->meeting->user_id) {
+            return;
+        }
+        
+        \Platform\Meetings\Models\MeetingParticipant::where('meeting_id', $this->meeting->id)
+            ->where('user_id', $userId)
+            ->delete();
+        
+        $this->meeting->refresh();
+    }
+
     public function render()
     {
         $user = Auth::user();
@@ -343,7 +380,18 @@ class Meeting extends Component
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Team-Mitglieder für Appointment-Erstellung
+        // Meeting-Participants für Appointment-Erstellung (nur Beteiligte)
+        $meetingParticipants = $this->meeting->participants()
+            ->with('user')
+            ->get()
+            ->map(function ($participant) {
+                return $participant->user;
+            })
+            ->filter()
+            ->sortBy('name')
+            ->values();
+
+        // Team-Mitglieder für Participant-Verwaltung (alle Team-Mitglieder)
         $teamMembers = $this->meeting->team->users()
             ->orderBy('name')
             ->get();
@@ -351,6 +399,7 @@ class Meeting extends Component
         return view('meetings::livewire.meeting', [
             'activities' => $this->activities,
             'appointments' => $appointments,
+            'meetingParticipants' => $meetingParticipants,
             'teamMembers' => $teamMembers,
         ])->layout('platform::layouts.app');
     }

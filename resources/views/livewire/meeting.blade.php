@@ -81,13 +81,28 @@
 
                 {{-- Teilnehmer --}}
                 <div>
-                    <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider mb-4">Teilnehmer</h3>
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider">Teilnehmer</h3>
+                        @can('update', $meeting)
+                            <button 
+                                type="button"
+                                @click="$dispatch('open-modal-meeting-participants', { meetingId: {{ $meeting->id }} })"
+                                class="text-xs text-[var(--ui-primary)] hover:text-[var(--ui-secondary)] transition-colors"
+                                title="Teilnehmer verwalten"
+                            >
+                                @svg('heroicon-o-user-plus', 'w-4 h-4')
+                            </button>
+                        @endcan
+                    </div>
                     <div class="space-y-2">
                         @foreach($meeting->participants as $participant)
                             <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
                                 <div class="flex items-center gap-2">
                                     @svg('heroicon-o-user', 'w-4 h-4 text-[var(--ui-muted)]')
                                     <span class="text-sm text-[var(--ui-secondary)]">{{ $participant->user->fullname ?? $participant->user->name }}</span>
+                                    @if($participant->role === 'organizer')
+                                        <x-ui-badge variant="primary" size="xs">Organisator</x-ui-badge>
+                                    @endif
                                 </div>
                                 @php
                                     $statusColors = [
@@ -295,6 +310,9 @@
     </x-ui-page-container>
 </x-ui-page>
 
+{{-- Meeting Participants Modal --}}
+<livewire:meetings.meeting-participants-modal/>
+
 {{-- Create Appointment Modal --}}
 @if($showCreateAppointmentModal)
     <x-ui-modal wire:model="showCreateAppointmentModal" title="Neuen Termin anlegen">
@@ -303,7 +321,7 @@
                 name="createAppointment.user_id"
                 wire:model="createAppointment.user_id"
                 label="Teilnehmer"
-                :options="$teamMembers"
+                :options="$meetingParticipants"
                 optionValue="id"
                 optionLabel="name"
                 :nullable="false"
