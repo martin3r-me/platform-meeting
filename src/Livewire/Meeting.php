@@ -32,6 +32,11 @@ class Meeting extends Component
         'start_date' => '',
         'end_date' => '',
     ];
+    
+    // Calendar Navigation
+    public $calendarYear;
+    public $calendarMonth;
+    public $selectedDate = null;
 
     #[On('updateMeeting')]
     public function updateMeeting()
@@ -49,6 +54,93 @@ class Meeting extends Component
     {
         $this->meeting = $meeting;
         $this->authorize('view', $this->meeting);
+        
+        // Kalender initialisieren
+        $this->calendarYear = now()->year;
+        $this->calendarMonth = now()->month;
+    }
+    
+    public function previousMonth()
+    {
+        if ($this->calendarMonth == 1) {
+            $this->calendarMonth = 12;
+            $this->calendarYear--;
+        } else {
+            $this->calendarMonth--;
+        }
+    }
+    
+    public function nextMonth()
+    {
+        if ($this->calendarMonth == 12) {
+            $this->calendarMonth = 1;
+            $this->calendarYear++;
+        } else {
+            $this->calendarMonth++;
+        }
+    }
+    
+    public function selectDate($date)
+    {
+        $this->selectedDate = $date;
+        $this->openCreateAppointmentModalForDate($date);
+    }
+    
+    public function openCreateAppointmentModalForDate($date)
+    {
+        $this->authorize('update', $this->meeting);
+        
+        $selectedDate = \Carbon\Carbon::parse($date);
+        $defaultStartTime = $selectedDate->copy()->setTime(9, 0); // 9:00 Uhr
+        $defaultEndTime = $selectedDate->copy()->setTime(10, 0); // 10:00 Uhr
+        
+        $this->createAppointment = [
+            'user_id' => null,
+            'start_date' => $defaultStartTime->format('Y-m-d\TH:i'),
+            'end_date' => $defaultEndTime->format('Y-m-d\TH:i'),
+        ];
+        $this->showCreateAppointmentModal = true;
+    }
+    
+    #[Computed]
+    public function calendarDays()
+    {
+        $firstDay = \Carbon\Carbon::create($this->calendarYear, $this->calendarMonth, 1);
+        $lastDay = $firstDay->copy()->endOfMonth();
+        $startOfCalendar = $firstDay->copy()->startOfWeek(\Carbon\Carbon::MONDAY);
+        $endOfCalendar = $lastDay->copy()->endOfWeek(\Carbon\Carbon::SUNDAY);
+        
+        $days = [];
+        $current = $startOfCalendar->copy();
+        $today = now();
+        
+        while ($current <= $endOfCalendar) {
+            $isCurrentMonth = $current->month == $this->calendarMonth;
+            $isToday = $current->isSameDay($today);
+            $hasAppointment = $this->meeting->appointments()
+                ->whereDate('start_date', $current->toDateString())
+                ->exists();
+            
+            $days[] = [
+                'date' => $current->toDateString(),
+                'day' => $current->day,
+                'isCurrentMonth' => $isCurrentMonth,
+                'isToday' => $isToday,
+                'hasAppointment' => $hasAppointment,
+            ];
+            
+            $current->addDay();
+        }
+        
+        return $days;
+    }
+    
+    #[Computed]
+    public function calendarMonthName()
+    {
+        return \Carbon\Carbon::create($this->calendarYear, $this->calendarMonth, 1)
+            ->locale('de')
+            ->isoFormat('MMMM YYYY');
     }
 
     public function rendered()
@@ -248,6 +340,20 @@ class Meeting extends Component
 
         $this->closeCreateAppointmentModal();
         $this->dispatch('appointmentCreated');
+        $this->meeting->refresh();
+    }
+    
+    public function deleteAppointment($appointmentId)
+    {
+        $this->authorize('update', $this->meeting);
+        
+        $appointment = Appointment::findOrFail($appointmentId);
+        if ($appointment->meeting_id !== $this->meeting->id) {
+            abort(403);
+        }
+        
+        $appointment->delete();
+        $this->meeting->refresh();
     }
 
     #[Computed]
