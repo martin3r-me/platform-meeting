@@ -401,30 +401,85 @@
     {{-- Create Appointment Modal --}}
     @if($showCreateAppointmentModal)
         <x-ui-modal wire:model="showCreateAppointmentModal" title="Neuen Termin anlegen">
-            <div class="space-y-4">
-                <x-ui-input-select
-                    name="createAppointment.user_id"
-                    wire:model="createAppointment.user_id"
-                    label="Teilnehmer"
-                    :options="$meetingParticipants"
-                    optionValue="id"
-                    optionLabel="name"
-                    :nullable="false"
-                    nullLabel="Teilnehmer auswählen"
-                    required
-                />
-                <x-ui-input-datetime
-                    name="createAppointment.start_date"
-                    wire:model="createAppointment.start_date"
-                    label="Startdatum & Zeit"
-                    required
-                />
-                <x-ui-input-datetime
-                    name="createAppointment.end_date"
-                    wire:model="createAppointment.end_date"
-                    label="Enddatum & Zeit"
-                    required
-                />
+            <div class="space-y-6">
+                {{-- Teilnehmer (Multi-Select mit Checkboxes) --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                        Teilnehmer <span class="text-red-500">*</span>
+                    </label>
+                    <div class="space-y-2 max-h-48 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        @forelse($meetingParticipants as $participant)
+                            <label class="flex items-center gap-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 p-2 rounded">
+                                <input 
+                                    type="checkbox" 
+                                    wire:model="createAppointment.user_ids"
+                                    value="{{ $participant->id }}"
+                                    class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700"
+                                />
+                                <span class="text-sm text-gray-900 dark:text-white">
+                                    {{ $participant->fullname ?? $participant->name }}
+                                </span>
+                            </label>
+                        @empty
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Keine Teilnehmer verfügbar</p>
+                        @endforelse
+                    </div>
+                    @error('createAppointment.user_ids')
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Startdatum & Zeit --}}
+                <div>
+                    <x-ui-input-datetime
+                        name="createAppointment.start_date"
+                        wire:model.live="createAppointment.start_date"
+                        label="Startdatum & Zeit"
+                        required
+                    />
+                    @error('createAppointment.start_date')
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Dauer --}}
+                <div>
+                    <label class="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+                        Dauer <span class="text-red-500">*</span>
+                    </label>
+                    <div class="grid grid-cols-4 gap-2">
+                        @foreach([15, 30, 45, 60, 90, 180, 240] as $minutes)
+                            @php
+                                $hours = $minutes >= 60 ? round($minutes / 60, 1) : null;
+                                $label = $hours ? ($hours == 1 ? '1 Stunde' : $hours . ' Stunden') : $minutes . ' Min.';
+                                $isLong = $minutes >= 180;
+                            @endphp
+                            <button
+                                type="button"
+                                wire:click="$set('createAppointment.duration_minutes', {{ $minutes }})"
+                                class="px-3 py-2 text-sm font-medium rounded-md border transition-colors
+                                    {{ $createAppointment['duration_minutes'] == $minutes 
+                                        ? 'bg-indigo-600 text-white border-indigo-600 dark:bg-indigo-500 dark:border-indigo-500' 
+                                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700' 
+                                    }}
+                                    {{ $isLong ? 'col-span-2' : '' }}
+                                "
+                            >
+                                {{ $label }}
+                            </button>
+                        @endforeach
+                    </div>
+                    @if($createAppointment['duration_minutes'] >= 180)
+                        <div class="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                            <p class="text-sm text-yellow-800 dark:text-yellow-200">
+                                ⚠️ Das ist eine sehr lange Dauer. Ist das wirklich notwendig?
+                            </p>
+                        </div>
+                    @endif
+                    @error('createAppointment.duration_minutes')
+                        <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>
+                    @enderror
+                </div>
             </div>
             
             <x-slot name="footer">
@@ -432,8 +487,9 @@
                     <x-ui-button variant="secondary-outline" size="sm" wire:click="closeCreateAppointmentModal">
                         Abbrechen
                     </x-ui-button>
-                    <x-ui-button variant="primary" size="sm" wire:click="createAppointment">
-                        Termin anlegen
+                    <x-ui-button variant="primary" size="sm" wire:click="createAppointment" wire:loading.attr="disabled">
+                        <span wire:loading.remove wire:target="createAppointment">Termin anlegen</span>
+                        <span wire:loading wire:target="createAppointment">Wird erstellt...</span>
                     </x-ui-button>
                 </div>
             </x-slot>

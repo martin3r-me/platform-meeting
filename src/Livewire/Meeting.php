@@ -28,9 +28,9 @@ class Meeting extends Component
     // Appointment Creation
     public $showCreateAppointmentModal = false;
     public $createAppointment = [
-        'user_id' => null,
+        'user_ids' => [],
         'start_date' => '',
-        'end_date' => '',
+        'duration_minutes' => 60, // Standard: 60 Minuten
     ];
     
     // Calendar Navigation
@@ -92,14 +92,26 @@ class Meeting extends Component
         
         $selectedDate = \Carbon\Carbon::parse($date);
         $defaultStartTime = $selectedDate->copy()->setTime(9, 0); // 9:00 Uhr
-        $defaultEndTime = $selectedDate->copy()->setTime(10, 0); // 10:00 Uhr
         
         $this->createAppointment = [
-            'user_id' => null,
+            'user_ids' => [],
             'start_date' => $defaultStartTime->format('Y-m-d\TH:i'),
-            'end_date' => $defaultEndTime->format('Y-m-d\TH:i'),
+            'duration_minutes' => 60,
         ];
         $this->showCreateAppointmentModal = true;
+    }
+    
+    public function updatedCreateAppointmentStartDate($value)
+    {
+        if ($value) {
+            // Konvertiere datetime-local Format (Y-m-d\TH:i) zu Y-m-d H:i:s
+            $this->createAppointment['start_date'] = str_replace('T', ' ', $value) . ':00';
+        }
+    }
+    
+    public function updatedCreateAppointmentDurationMinutes($value)
+    {
+        $this->createAppointment['duration_minutes'] = $value;
     }
     
     #[Computed]
@@ -286,10 +298,12 @@ class Meeting extends Component
     {
         $this->authorize('update', $this->meeting);
         
+        $defaultStartTime = now()->copy()->setTime(9, 0);
+        
         $this->createAppointment = [
-            'user_id' => null,
-            'start_date' => $this->meeting->start_date->format('Y-m-d\TH:i'),
-            'end_date' => $this->meeting->end_date->format('Y-m-d\TH:i'),
+            'user_ids' => [],
+            'start_date' => $defaultStartTime->format('Y-m-d\TH:i'),
+            'duration_minutes' => 60,
         ];
         $this->showCreateAppointmentModal = true;
     }
@@ -298,9 +312,9 @@ class Meeting extends Component
     {
         $this->showCreateAppointmentModal = false;
         $this->createAppointment = [
-            'user_id' => null,
+            'user_ids' => [],
             'start_date' => '',
-            'end_date' => '',
+            'duration_minutes' => 60,
         ];
     }
 
@@ -309,31 +323,33 @@ class Meeting extends Component
         $this->authorize('update', $this->meeting);
         
         // Konvertiere datetime-local Format falls nötig
-        if (!empty($this->createAppointment['start_date']) && str_contains($this->createAppointment['start_date'], 'T')) {
-            $this->createAppointment['start_date'] = str_replace('T', ' ', $this->createAppointment['start_date']) . ':00';
-        }
-        if (!empty($this->createAppointment['end_date']) && str_contains($this->createAppointment['end_date'], 'T')) {
-            $this->createAppointment['end_date'] = str_replace('T', ' ', $this->createAppointment['end_date']) . ':00';
+        $startDateValue = $this->createAppointment['start_date'];
+        if (!empty($startDateValue) && str_contains($startDateValue, 'T')) {
+            $startDateValue = str_replace('T', ' ', $startDateValue) . ':00';
         }
         
         $this->validate([
-            'createAppointment.user_id' => 'required|exists:users,id',
+            'createAppointment.user_ids' => 'required|array|min:1',
+            'createAppointment.user_ids.*' => 'exists:users,id',
             'createAppointment.start_date' => 'required|date',
-            'createAppointment.end_date' => 'required|date|after:createAppointment.start_date',
+            'createAppointment.duration_minutes' => 'required|integer|min:1',
         ]);
 
-        $startDate = \Carbon\Carbon::parse($this->createAppointment['start_date']);
-        $endDate = \Carbon\Carbon::parse($this->createAppointment['end_date']);
+        $startDate = \Carbon\Carbon::parse($startDateValue);
+        $endDate = $startDate->copy()->addMinutes($this->createAppointment['duration_minutes']);
 
-        $appointment = Appointment::create([
-            'meeting_id' => $this->meeting->id,
-            'user_id' => $this->createAppointment['user_id'],
-            'team_id' => $this->meeting->team_id,
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-            'location' => $this->meeting->location, // Standard-Location vom Meeting
-            'sync_status' => 'pending',
-        ]);
+        // Für jeden ausgewählten User ein Appointment erstellen
+        foreach ($this->createAppointment['user_ids'] as $userId) {
+            Appointment::create([
+                'meeting_id' => $this->meeting->id,
+                'user_id' => $userId,
+                'team_id' => $this->meeting->team_id,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'location' => $this->meeting->location, // Standard-Location vom Meeting
+                'sync_status' => 'pending',
+            ]);
+        }
 
         // Zu Microsoft Calendar syncen (wird später implementiert)
         // TODO: Eigene Methode für einzelne User-Events implementieren
