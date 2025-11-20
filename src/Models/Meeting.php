@@ -100,16 +100,6 @@ class Meeting extends Model implements HasDisplayName
     }
 
     /**
-     * Prüft ob es ein Teams Call ist
-     */
-    public function isTeamsCall(): bool
-    {
-        return !empty($this->microsoft_online_meeting_id) || 
-               (str_contains(strtolower($this->location ?? ''), 'teams') ||
-                str_contains(strtolower($this->location ?? ''), 'microsoft teams'));
-    }
-
-    /**
      * Prüft ob es ein Raum ist
      */
     public function isRoom(): bool
