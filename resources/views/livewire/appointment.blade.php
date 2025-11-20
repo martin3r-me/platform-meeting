@@ -112,11 +112,11 @@
                                 </div>
                             </div>
                         @endif
-                        @if($appointment->meeting->getTeamsJoinUrl())
+                        @if($appointment->getTeamsJoinUrl())
                             <div class="flex justify-between py-1">
                                 <span class="text-[var(--ui-muted)]">Teams:</span>
                                 <a 
-                                    href="{{ $appointment->meeting->getTeamsJoinUrl() }}" 
+                                    href="{{ $appointment->getTeamsJoinUrl() }}" 
                                     target="_blank" 
                                     rel="noopener noreferrer"
                                     class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"

@@ -465,8 +465,12 @@ class MicrosoftGraphCalendarService
                     continue;
                 }
 
+                // Suche nach Participant: Entweder über User (intern) oder über Email (extern)
                 $participant = $meeting->participants()
-                    ->whereHas('user', fn($q) => $q->where('email', $email))
+                    ->where(function($query) use ($email) {
+                        $query->whereHas('user', fn($q) => $q->where('email', $email))
+                              ->orWhere('email', $email);
+                    })
                     ->first();
 
                 if ($participant) {

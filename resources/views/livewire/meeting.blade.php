@@ -98,23 +98,7 @@
                                 <x-ui-badge variant="warning" size="xs">Wiederkehrend</x-ui-badge>
                             </div>
                         @endif
-                        @if($meeting->getTeamsJoinUrl())
-                            <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
-                                <div class="flex items-center gap-2">
-                                    @svg('heroicon-o-video-camera', 'w-4 h-4 text-[var(--ui-primary)]')
-                                    <span class="text-sm text-[var(--ui-secondary)]">Teams Meeting</span>
-                                </div>
-                                <a 
-                                    href="{{ $meeting->getTeamsJoinUrl() }}" 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                                >
-                                    @svg('heroicon-o-arrow-top-right-on-square', 'w-3 h-3')
-                                    Beitreten
-                                </a>
-                            </div>
-                        @endif
+                        {{-- Teams Link wird jetzt im Appointment angezeigt, nicht mehr hier --}}
                         <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
                             <div class="flex items-center gap-2">
                                 @svg('heroicon-o-check-circle', 'w-4 h-4 text-[var(--ui-primary)]')
@@ -280,9 +264,9 @@
                                             @endif
                                         </div>
                                     @endif
-                                    @if($appointment->meeting->getTeamsJoinUrl())
+                                    @if($appointment->getTeamsJoinUrl())
                                         <a 
-                                            href="{{ $appointment->meeting->getTeamsJoinUrl() }}" 
+                                            href="{{ $appointment->getTeamsJoinUrl() }}" 
                                             target="_blank" 
                                             rel="noopener noreferrer"
                                             class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors flex-shrink-0"

@@ -8,23 +8,33 @@
                     @foreach($meeting->participants as $participant)
                         <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--ui-border)]/60 bg-[var(--ui-muted-5)]">
                             <div class="flex items-center space-x-3">
-                                @if($participant->user->avatar ?? null)
-                                    <img src="{{ $participant->user->avatar }}" alt="{{ $participant->user->name }}" class="w-8 h-8 rounded-full object-cover">
+                                @if($participant->user)
+                                    @if($participant->user->avatar ?? null)
+                                        <img src="{{ $participant->user->avatar }}" alt="{{ $participant->user->name }}" class="w-8 h-8 rounded-full object-cover">
+                                    @else
+                                        <div class="w-8 h-8 bg-[var(--ui-primary-5)] text-[var(--ui-primary)] rounded-full flex items-center justify-center text-sm font-medium">
+                                            {{ substr($participant->user->name ?? '?', 0, 1) }}
+                                        </div>
+                                    @endif
                                 @else
-                                    <div class="w-8 h-8 bg-[var(--ui-primary-5)] text-[var(--ui-primary)] rounded-full flex items-center justify-center text-sm font-medium">
-                                        {{ substr($participant->user->name ?? '?', 0, 1) }}
+                                    {{-- Externer Teilnehmer --}}
+                                    <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded-full flex items-center justify-center text-sm font-medium">
+                                        {{ substr($participant->name ?? $participant->email ?? '?', 0, 1) }}
                                     </div>
                                 @endif
                                 <div>
                                     <div class="font-medium text-sm text-[var(--ui-secondary)]">
-                                        {{ $participant->user->fullname ?? $participant->user->name }}
+                                        {{ $participant->display_name }}
                                     </div>
                                     <div class="text-xs text-[var(--ui-muted)]">
-                                        {{ $participant->user->email }}
+                                        {{ $participant->user->email ?? $participant->email }}
                                     </div>
                                 </div>
                                 @if($participant->role === 'organizer')
                                     <x-ui-badge variant="primary" size="xs">Organisator</x-ui-badge>
+                                @endif
+                                @if($participant->isExternal())
+                                    <x-ui-badge variant="info" size="xs">Extern</x-ui-badge>
                                 @endif
                             </div>
                             

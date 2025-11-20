@@ -232,6 +232,8 @@ class Meeting extends Model implements HasDisplayName
 
     /**
      * Gibt den Teams Join-Link zurück (falls vorhanden)
+     * Für Serien: Link ist beim Meeting (gilt für alle Instanzen)
+     * Für einzelne Events: Link ist beim Meeting
      */
     public function getTeamsJoinUrl(): ?string
     {

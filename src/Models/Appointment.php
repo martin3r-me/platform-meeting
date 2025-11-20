@@ -20,6 +20,8 @@ class Appointment extends Model
         'end_date', // Konkreter Termin
         'location', // Optional: Überschreibt Meeting-Location
         'microsoft_event_id',
+        'microsoft_teams_join_url', // Teams Join-Link (falls Instanz-spezifisch)
+        'microsoft_teams_web_url', // Teams Web-URL (falls Instanz-spezifisch)
         'sync_status',
         'last_synced_at',
         'sync_error',
@@ -64,6 +66,18 @@ class Appointment extends Model
     public function agendaItems()
     {
         return $this->hasMany(\Platform\Meetings\Models\MeetingAgendaItem::class, 'appointment_id')->orderBy('order');
+    }
+
+    /**
+     * Gibt den Teams Join-Link zurück (falls vorhanden)
+     * Zuerst im Appointment (falls Instanz-spezifisch), dann Fallback auf Meeting
+     */
+    public function getTeamsJoinUrl(): ?string
+    {
+        return $this->microsoft_teams_join_url 
+            ?? $this->microsoft_teams_web_url
+            ?? $this->meeting?->getTeamsJoinUrl()
+            ?? null;
     }
 }
 

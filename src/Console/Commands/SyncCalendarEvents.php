@@ -185,6 +185,11 @@ class SyncCalendarEvents extends Command
             if (!$meeting) {
                 // Erstelle Meeting für die Serie (mit Recurrence Pattern)
                 $meeting = $this->createSeriesMeeting($user, $event, $seriesMasterId);
+                
+                // Teilnehmer aus Series Master Event verarbeiten (einmalig beim Erstellen)
+                if ($meeting) {
+                    $this->syncParticipantsFromEvent($meeting, $event);
+                }
             }
             
             if (!$meeting) {
@@ -201,7 +206,7 @@ class SyncCalendarEvents extends Command
                     continue;
                 }
                 
-                // Prüfe ob Appointment für diese Instanz bereits existiert
+                // Prüfe ob Appointment für diese Instanz bereits existiert (über microsoft_event_id)
                 $existingAppointment = Appointment::where('microsoft_event_id', $instanceEventId)->first();
                 if ($existingAppointment) {
                     continue; // Bereits vorhanden
@@ -216,18 +221,64 @@ class SyncCalendarEvents extends Command
                     continue;
                 }
                 
+                // Prüfe zusätzlich ob bereits ein Appointment für Meeting+User existiert (für Sicherheit)
+                // Das sollte eigentlich nicht passieren, aber als Fallback
+                $existingAppointmentForMeeting = Appointment::where('meeting_id', $meeting->id)
+                    ->where('user_id', $user->id)
+                    ->where('start_date', $instanceStart->format('Y-m-d H:i:s'))
+                    ->first();
+                
+                if ($existingAppointmentForMeeting) {
+                    // Appointment existiert bereits - aktualisiere microsoft_event_id falls leer
+                    if (!$existingAppointmentForMeeting->microsoft_event_id) {
+                        $existingAppointmentForMeeting->update([
+                            'microsoft_event_id' => $instanceEventId,
+                            'sync_status' => 'synced',
+                            'last_synced_at' => now(),
+                        ]);
+                    }
+                    continue;
+                }
+                
+                // Teams Links aus Instanz extrahieren (falls vorhanden)
+                $instanceOnlineMeeting = $instance['onlineMeeting'] ?? null;
+                $instanceTeamsJoinUrl = $instanceOnlineMeeting['joinUrl'] ?? null;
+                $instanceTeamsWebUrl = $instanceOnlineMeeting['joinWebUrl'] ?? $instanceOnlineMeeting['url'] ?? null;
+                
                 // Erstelle Appointment für diese Instanz
-                $appointment = Appointment::create([
-                    'meeting_id' => $meeting->id,
-                    'user_id' => $user->id,
-                    'team_id' => $user->currentTeam->id ?? null,
-                    'start_date' => $instanceStart,
-                    'end_date' => $instanceEnd,
-                    'location' => $meeting->location,
-                    'microsoft_event_id' => $instanceEventId,
-                    'sync_status' => 'synced',
-                    'last_synced_at' => now(),
-                ]);
+                // WICHTIG: Für Recurring Events verwenden wir microsoft_event_id als eindeutigen Schlüssel
+                // (nicht meeting_id+user_id, da mehrere Instanzen das gleiche Meeting haben können)
+                try {
+                    Appointment::firstOrCreate(
+                        [
+                            'microsoft_event_id' => $instanceEventId,
+                        ],
+                        [
+                            'meeting_id' => $meeting->id,
+                            'user_id' => $user->id,
+                            'team_id' => $user->currentTeam->id ?? null,
+                            'start_date' => $instanceStart,
+                            'end_date' => $instanceEnd,
+                            'location' => $meeting->location,
+                            'microsoft_teams_join_url' => $instanceTeamsJoinUrl, // Instanz-spezifischer Link (falls vorhanden)
+                            'microsoft_teams_web_url' => $instanceTeamsWebUrl, // Instanz-spezifischer Link (falls vorhanden)
+                            'sync_status' => 'synced',
+                            'last_synced_at' => now(),
+                        ]
+                    );
+                    $appointmentsCreated++;
+                } catch (\Illuminate\Database\QueryException $e) {
+                    // Falls doch ein Duplikat auftritt (z.B. durch Race Condition), loggen und überspringen
+                    if ($e->getCode() == 23000) { // Integrity constraint violation
+                        Log::warning('Duplicate appointment detected (race condition?)', [
+                            'meeting_id' => $meeting->id,
+                            'user_id' => $user->id,
+                            'microsoft_event_id' => $instanceEventId,
+                        ]);
+                        continue;
+                    }
+                    throw $e;
+                }
                 
                 $appointmentsCreated++;
             }
@@ -288,7 +339,7 @@ class SyncCalendarEvents extends Command
         $teamsWebUrl = $onlineMeeting['joinWebUrl'] ?? $onlineMeeting['url'] ?? null;
         
         // Meeting für die Serie erstellen (OHNE konkrete Datum/Zeit - die kommen in Appointments)
-        return Meeting::create([
+        $meeting = Meeting::create([
             'user_id' => $user->id,
             'team_id' => $teamId,
             'title' => $event['subject'] ?? 'Ohne Titel',
@@ -307,6 +358,20 @@ class SyncCalendarEvents extends Command
             'recurrence_start_date' => $recurrenceStartDate,
             'recurrence_end_date' => $recurrenceEndDate,
         ]);
+        
+        // Organizer als Participant hinzufügen
+        MeetingParticipant::firstOrCreate(
+            [
+                'meeting_id' => $meeting->id,
+                'user_id' => $user->id,
+            ],
+            [
+                'role' => 'organizer',
+                'response_status' => 'accepted',
+            ]
+        );
+        
+        return $meeting;
     }
 
     protected function createMeetingFromEvent(User $user, array $event, ?string $seriesMasterId = null, bool $isSeriesInstance = false): array
@@ -326,10 +391,26 @@ class SyncCalendarEvents extends Command
         // Prüfe ob Meeting bereits existiert (für einzelne Events über microsoft_event_id)
         $existingMeeting = Meeting::where('microsoft_event_id', $eventId)->first();
         if ($existingMeeting) {
-            // Meeting existiert - erstelle Appointment für User
+            // Meeting existiert - prüfe ob Appointment bereits existiert
             $startDateTime = Carbon::parse($event['start']['dateTime']);
             $endDateTime = Carbon::parse($event['end']['dateTime']);
-            $teamId = $user->currentTeam->id ?? null;
+            
+            $existingAppointment = Appointment::where('microsoft_event_id', $eventId)
+                ->orWhere(function($query) use ($existingMeeting, $user, $startDateTime) {
+                    $query->where('meeting_id', $existingMeeting->id)
+                          ->where('user_id', $user->id)
+                          ->where('start_date', $startDateTime->format('Y-m-d H:i:s'));
+                })
+                ->first();
+            
+            if (!$existingAppointment) {
+                // Erstelle Appointment für User
+                $teamId = $user->currentTeam->id ?? null;
+                
+            // Teams Links aus Event extrahieren
+            $onlineMeeting = $event['onlineMeeting'] ?? null;
+            $teamsJoinUrl = $onlineMeeting['joinUrl'] ?? null;
+            $teamsWebUrl = $onlineMeeting['joinWebUrl'] ?? $onlineMeeting['url'] ?? null;
             
             Appointment::create([
                 'meeting_id' => $existingMeeting->id,
@@ -339,11 +420,14 @@ class SyncCalendarEvents extends Command
                 'end_date' => $endDateTime,
                 'location' => $existingMeeting->location,
                 'microsoft_event_id' => $eventId,
+                'microsoft_teams_join_url' => $teamsJoinUrl,
+                'microsoft_teams_web_url' => $teamsWebUrl,
                 'sync_status' => 'synced',
                 'last_synced_at' => now(),
             ]);
+            }
             
-            return ['meeting' => $existingMeeting, 'appointments' => 1];
+            return ['meeting' => $existingMeeting, 'appointments' => 0];
         }
 
         // Parse Datum/Zeit
@@ -442,6 +526,8 @@ class SyncCalendarEvents extends Command
                     'end_date' => $endDateTime,
                     'location' => $meeting->location,
                     'microsoft_event_id' => $eventId,
+                    'microsoft_teams_join_url' => $teamsJoinUrl, // Teams Link im Appointment
+                    'microsoft_teams_web_url' => $teamsWebUrl, // Teams Link im Appointment
                     'sync_status' => 'synced',
                     'last_synced_at' => now(),
                 ]
@@ -453,48 +539,62 @@ class SyncCalendarEvents extends Command
 
             foreach ($attendees as $attendee) {
                 $attendeeEmail = $attendee['emailAddress']['address'] ?? null;
+                $attendeeName = $attendee['emailAddress']['name'] ?? $attendeeEmail;
+                
                 if (!$attendeeEmail) {
                     continue;
                 }
 
                 // User anhand Email finden
                 $attendeeUser = User::where('email', $attendeeEmail)->first();
-                if (!$attendeeUser) {
-                    // User existiert nicht - nur als Participant hinzufügen (ohne Appointment)
-                    continue;
-                }
+                
+                if ($attendeeUser) {
+                    // Interner User: Participant + Appointment erstellen
+                    $participant = MeetingParticipant::firstOrCreate(
+                        [
+                            'meeting_id' => $meeting->id,
+                            'user_id' => $attendeeUser->id,
+                        ],
+                        [
+                            'role' => $attendee['type'] === 'required' ? 'attendee' : 'optional',
+                            'response_status' => $this->mapResponseStatus($attendee['status']['response'] ?? 'none'),
+                        ]
+                    );
 
-                // Participant hinzufügen
-                $participant = MeetingParticipant::firstOrCreate(
-                    [
-                        'meeting_id' => $meeting->id,
-                        'user_id' => $attendeeUser->id,
-                    ],
-                    [
-                        'role' => $attendee['type'] === 'required' ? 'attendee' : 'optional',
-                        'response_status' => $this->mapResponseStatus($attendee['status']['response'] ?? 'none'),
-                    ]
-                );
+                    // Appointment erstellen (mit konkreten Daten)
+                    $appointment = Appointment::firstOrCreate(
+                        [
+                            'meeting_id' => $meeting->id,
+                            'user_id' => $attendeeUser->id,
+                        ],
+                        [
+                            'team_id' => $teamId,
+                            'start_date' => $startDateTime,
+                            'end_date' => $endDateTime,
+                            'location' => $meeting->location,
+                            'microsoft_event_id' => $eventId,
+                            'sync_status' => 'synced',
+                            'last_synced_at' => now(),
+                        ]
+                    );
 
-                // Appointment erstellen (mit konkreten Daten)
-                $appointment = Appointment::firstOrCreate(
-                    [
-                        'meeting_id' => $meeting->id,
-                        'user_id' => $attendeeUser->id,
-                    ],
-                    [
-                        'team_id' => $teamId,
-                        'start_date' => $startDateTime,
-                        'end_date' => $endDateTime,
-                        'location' => $meeting->location,
-                        'microsoft_event_id' => $eventId,
-                        'sync_status' => 'synced',
-                        'last_synced_at' => now(),
-                    ]
-                );
-
-                if ($appointment->wasRecentlyCreated) {
-                    $appointmentsCreated++;
+                    if ($appointment->wasRecentlyCreated) {
+                        $appointmentsCreated++;
+                    }
+                } else {
+                    // Externer User (ohne Account): Nur als Participant hinzufügen (ohne Appointment)
+                    MeetingParticipant::firstOrCreate(
+                        [
+                            'meeting_id' => $meeting->id,
+                            'email' => $attendeeEmail,
+                        ],
+                        [
+                            'name' => $attendeeName,
+                            'role' => $attendee['type'] === 'required' ? 'attendee' : 'optional',
+                            'response_status' => $this->mapResponseStatus($attendee['status']['response'] ?? 'none'),
+                            'microsoft_attendee_id' => $attendee['id'] ?? null,
+                        ]
+                    );
                 }
             }
 
@@ -510,6 +610,61 @@ class SyncCalendarEvents extends Command
             DB::rollBack();
             Log::error('Failed to create meeting from event', [
                 'event_id' => $eventId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return ['meeting' => null, 'appointments' => 0];
+        }
+    }
+
+    /**
+     * Synchronisiert Teilnehmer aus einem Event (für interne und externe User)
+     */
+    protected function syncParticipantsFromEvent(Meeting $meeting, array $event): void
+    {
+        $attendees = $event['attendees'] ?? [];
+        
+        foreach ($attendees as $attendee) {
+            $attendeeEmail = $attendee['emailAddress']['address'] ?? null;
+            $attendeeName = $attendee['emailAddress']['name'] ?? $attendeeEmail;
+            
+            if (!$attendeeEmail) {
+                continue;
+            }
+
+            // User anhand Email finden
+            $attendeeUser = User::where('email', $attendeeEmail)->first();
+            
+            if ($attendeeUser) {
+                // Interner User: Participant erstellen
+                MeetingParticipant::firstOrCreate(
+                    [
+                        'meeting_id' => $meeting->id,
+                        'user_id' => $attendeeUser->id,
+                    ],
+                    [
+                        'role' => $attendee['type'] === 'required' ? 'attendee' : 'optional',
+                        'response_status' => $this->mapResponseStatus($attendee['status']['response'] ?? 'none'),
+                        'microsoft_attendee_id' => $attendee['id'] ?? null,
+                    ]
+                );
+            } else {
+                // Externer User (ohne Account): Nur als Participant hinzufügen
+                MeetingParticipant::firstOrCreate(
+                    [
+                        'meeting_id' => $meeting->id,
+                        'email' => $attendeeEmail,
+                    ],
+                    [
+                        'name' => $attendeeName,
+                        'role' => $attendee['type'] === 'required' ? 'attendee' : 'optional',
+                        'response_status' => $this->mapResponseStatus($attendee['status']['response'] ?? 'none'),
+                        'microsoft_attendee_id' => $attendee['id'] ?? null,
+                    ]
+                );
+            }
+        }
+    }
                 'error' => $e->getMessage(),
             ]);
             throw $e;
