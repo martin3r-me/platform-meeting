@@ -175,28 +175,71 @@ class SyncCalendarEvents extends Command
         $isRecurring = !empty($seriesMasterId) || !empty($event['recurrence']);
 
         if ($isRecurring && $seriesMasterId) {
-            // Recurring Event: Hole alle Instanzen
+            // Recurring Event: 
+            // 1. Erstelle/Finde EIN Meeting für die Serie (Elternelement)
+            // 2. Hole alle Instanzen und erstelle Appointments (konkrete Termine)
+            
+            // Prüfe ob Meeting für diese Serie bereits existiert
+            $meeting = Meeting::where('microsoft_series_master_id', $seriesMasterId)->first();
+            
+            if (!$meeting) {
+                // Erstelle Meeting für die Serie (mit Recurrence Pattern)
+                $meeting = $this->createSeriesMeeting($user, $event, $seriesMasterId);
+            }
+            
+            if (!$meeting) {
+                return ['created' => false, 'meetings' => 0, 'appointments' => 0, 'title' => $event['subject'] ?? ''];
+            }
+            
+            // Hole alle Instanzen und erstelle Appointments
             $instances = $calendarService->getRecurringEventInstances($user, $seriesMasterId, $startDate, $endDate);
             
-            $meetingsCreated = 0;
             $appointmentsCreated = 0;
-            
             foreach ($instances as $instance) {
-                $result = $this->createMeetingFromEvent($user, $instance, $seriesMasterId, true);
-                if ($result['meeting']) {
-                    $meetingsCreated++;
-                    $appointmentsCreated += $result['appointments'];
+                $instanceEventId = $instance['id'] ?? null;
+                if (!$instanceEventId) {
+                    continue;
                 }
+                
+                // Prüfe ob Appointment für diese Instanz bereits existiert
+                $existingAppointment = Appointment::where('microsoft_event_id', $instanceEventId)->first();
+                if ($existingAppointment) {
+                    continue; // Bereits vorhanden
+                }
+                
+                // Parse Datum/Zeit der Instanz
+                $instanceStart = Carbon::parse($instance['start']['dateTime']);
+                $instanceEnd = Carbon::parse($instance['end']['dateTime']);
+                
+                // Nur zukünftige Instanzen
+                if ($instanceStart->isPast()) {
+                    continue;
+                }
+                
+                // Erstelle Appointment für diese Instanz
+                $appointment = Appointment::create([
+                    'meeting_id' => $meeting->id,
+                    'user_id' => $user->id,
+                    'team_id' => $user->currentTeam->id ?? null,
+                    'start_date' => $instanceStart,
+                    'end_date' => $instanceEnd,
+                    'location' => $meeting->location,
+                    'microsoft_event_id' => $instanceEventId,
+                    'sync_status' => 'synced',
+                    'last_synced_at' => now(),
+                ]);
+                
+                $appointmentsCreated++;
             }
             
             return [
-                'created' => $meetingsCreated > 0,
-                'meetings' => $meetingsCreated,
+                'created' => $appointmentsCreated > 0,
+                'meetings' => 0, // Meeting wurde bereits erstellt oder existierte bereits
                 'appointments' => $appointmentsCreated,
                 'title' => $event['subject'] ?? '',
             ];
         } else {
-            // Einzelnes Event
+            // Einzelnes Event: Meeting + Appointment wie bisher
             $result = $this->createMeetingFromEvent($user, $event, null, false);
             
             return [
@@ -208,6 +251,64 @@ class SyncCalendarEvents extends Command
         }
     }
 
+    /**
+     * Erstellt ein Meeting für eine Serie (Elternelement)
+     */
+    protected function createSeriesMeeting(User $user, array $event, string $seriesMasterId): ?Meeting
+    {
+        $teamId = $user->currentTeam->id ?? null;
+        
+        // Recurrence Pattern extrahieren
+        $recurrence = $event['recurrence'] ?? null;
+        $recurrenceType = null;
+        $recurrenceInterval = null;
+        $recurrenceDaysOfWeek = null;
+        $recurrenceStartDate = null;
+        $recurrenceEndDate = null;
+        
+        if ($recurrence) {
+            $pattern = $recurrence['pattern'] ?? [];
+            $range = $recurrence['range'] ?? [];
+            
+            $recurrenceType = strtolower($pattern['type'] ?? '');
+            $recurrenceInterval = $pattern['interval'] ?? 1;
+            $recurrenceDaysOfWeek = $pattern['daysOfWeek'] ?? null;
+            
+            if (!empty($range['startDate'])) {
+                $recurrenceStartDate = Carbon::parse($range['startDate'])->toDateString();
+            }
+            if (!empty($range['endDate'])) {
+                $recurrenceEndDate = Carbon::parse($range['endDate'])->toDateString();
+            }
+        }
+        
+        // Teams Meeting Link extrahieren
+        $onlineMeeting = $event['onlineMeeting'] ?? null;
+        $teamsJoinUrl = $onlineMeeting['joinUrl'] ?? null;
+        $teamsWebUrl = $onlineMeeting['joinWebUrl'] ?? $onlineMeeting['url'] ?? null;
+        
+        // Meeting für die Serie erstellen (OHNE konkrete Datum/Zeit - die kommen in Appointments)
+        return Meeting::create([
+            'user_id' => $user->id,
+            'team_id' => $teamId,
+            'title' => $event['subject'] ?? 'Ohne Titel',
+            'description' => $event['body']['content'] ?? $event['bodyPreview'] ?? null,
+            'location' => $event['location']['displayName'] ?? $event['location']['locationUri'] ?? null,
+            'status' => 'planned',
+            'microsoft_series_master_id' => $seriesMasterId,
+            'is_series_instance' => false, // Das Meeting selbst ist KEINE Instanz, sondern die Serie
+            'microsoft_online_meeting_id' => $event['onlineMeetingId'] ?? $onlineMeeting['id'] ?? null,
+            'microsoft_teams_join_url' => $teamsJoinUrl,
+            'microsoft_teams_web_url' => $teamsWebUrl,
+            // Recurrence Pattern
+            'recurrence_type' => $recurrenceType,
+            'recurrence_interval' => $recurrenceInterval,
+            'recurrence_days_of_week' => $recurrenceDaysOfWeek,
+            'recurrence_start_date' => $recurrenceStartDate,
+            'recurrence_end_date' => $recurrenceEndDate,
+        ]);
+    }
+
     protected function createMeetingFromEvent(User $user, array $event, ?string $seriesMasterId = null, bool $isSeriesInstance = false): array
     {
         $eventId = $event['id'] ?? null;
@@ -215,10 +316,34 @@ class SyncCalendarEvents extends Command
             return ['meeting' => null, 'appointments' => 0];
         }
 
-        // Prüfe ob bereits existiert
+        // Für einzelne Events: Prüfe ob Appointment bereits existiert (über microsoft_event_id)
+        // microsoft_event_id ist eindeutig und team-übergreifend
+        $existingAppointment = Appointment::where('microsoft_event_id', $eventId)->first();
+        if ($existingAppointment) {
+            return ['meeting' => $existingAppointment->meeting, 'appointments' => 0];
+        }
+        
+        // Prüfe ob Meeting bereits existiert (für einzelne Events über microsoft_event_id)
         $existingMeeting = Meeting::where('microsoft_event_id', $eventId)->first();
         if ($existingMeeting) {
-            return ['meeting' => $existingMeeting, 'appointments' => 0];
+            // Meeting existiert - erstelle Appointment für User
+            $startDateTime = Carbon::parse($event['start']['dateTime']);
+            $endDateTime = Carbon::parse($event['end']['dateTime']);
+            $teamId = $user->currentTeam->id ?? null;
+            
+            Appointment::create([
+                'meeting_id' => $existingMeeting->id,
+                'user_id' => $user->id,
+                'team_id' => $teamId,
+                'start_date' => $startDateTime,
+                'end_date' => $endDateTime,
+                'location' => $existingMeeting->location,
+                'microsoft_event_id' => $eventId,
+                'sync_status' => 'synced',
+                'last_synced_at' => now(),
+            ]);
+            
+            return ['meeting' => $existingMeeting, 'appointments' => 1];
         }
 
         // Parse Datum/Zeit
@@ -235,18 +360,67 @@ class SyncCalendarEvents extends Command
 
         DB::beginTransaction();
         try {
+            // Recurrence Pattern extrahieren
+            $recurrence = $event['recurrence'] ?? null;
+            $recurrenceType = null;
+            $recurrenceInterval = null;
+            $recurrenceDaysOfWeek = null;
+            $recurrenceStartDate = null;
+            $recurrenceEndDate = null;
+            
+            if ($recurrence) {
+                $pattern = $recurrence['pattern'] ?? [];
+                $range = $recurrence['range'] ?? [];
+                
+                $recurrenceType = strtolower($pattern['type'] ?? '');
+                $recurrenceInterval = $pattern['interval'] ?? 1;
+                $recurrenceDaysOfWeek = $pattern['daysOfWeek'] ?? null;
+                
+                if (!empty($range['startDate'])) {
+                    $recurrenceStartDate = Carbon::parse($range['startDate'])->toDateString();
+                }
+                if (!empty($range['endDate'])) {
+                    $recurrenceEndDate = Carbon::parse($range['endDate'])->toDateString();
+                }
+            }
+            
+            // Teams Meeting Link extrahieren
+            $onlineMeeting = $event['onlineMeeting'] ?? null;
+            $teamsJoinUrl = $onlineMeeting['joinUrl'] ?? null;
+            $teamsWebUrl = $onlineMeeting['joinWebUrl'] ?? $onlineMeeting['url'] ?? null;
+            
             // Meeting erstellen (ohne konkrete Daten - die kommen in Appointments)
-            $meeting = Meeting::create([
+            // Für einzelne Events: microsoft_event_id setzen
+            // Für Serien: KEIN microsoft_event_id (nur microsoft_series_master_id)
+            $meetingData = [
                 'user_id' => $user->id,
                 'team_id' => $teamId,
                 'title' => $event['subject'] ?? 'Ohne Titel',
                 'description' => $event['body']['content'] ?? $event['bodyPreview'] ?? null,
                 'location' => $event['location']['displayName'] ?? $event['location']['locationUri'] ?? null,
                 'status' => 'planned',
-                'microsoft_event_id' => $eventId,
-                'microsoft_series_master_id' => $seriesMasterId,
-                'is_series_instance' => $isSeriesInstance,
-            ]);
+                'microsoft_series_master_id' => $seriesMasterId ?? $event['seriesMasterId'] ?? null,
+                'is_series_instance' => false, // Meeting ist die Serie, keine Instanz
+                'microsoft_online_meeting_id' => $event['onlineMeetingId'] ?? $onlineMeeting['id'] ?? null,
+                'microsoft_teams_join_url' => $teamsJoinUrl,
+                'microsoft_teams_web_url' => $teamsWebUrl,
+            ];
+            
+            // Nur für einzelne Events: microsoft_event_id setzen
+            if (!$seriesMasterId && !$isSeriesInstance) {
+                $meetingData['microsoft_event_id'] = $eventId;
+            }
+            
+            // Recurrence Pattern nur für Serien
+            if ($seriesMasterId || $recurrenceType) {
+                $meetingData['recurrence_type'] = $recurrenceType;
+                $meetingData['recurrence_interval'] = $recurrenceInterval;
+                $meetingData['recurrence_days_of_week'] = $recurrenceDaysOfWeek;
+                $meetingData['recurrence_start_date'] = $recurrenceStartDate;
+                $meetingData['recurrence_end_date'] = $recurrenceEndDate;
+            }
+            
+            $meeting = Meeting::create($meetingData);
 
             // Organizer als Participant hinzufügen
             MeetingParticipant::create([

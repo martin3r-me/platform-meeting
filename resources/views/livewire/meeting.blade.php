@@ -88,9 +88,31 @@
                             <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
                                 <div class="flex items-center gap-2">
                                     @svg('heroicon-o-arrow-path', 'w-4 h-4 text-[var(--ui-primary)]')
-                                    <span class="text-sm text-[var(--ui-secondary)]">Serientermin</span>
+                                    <div class="flex flex-col">
+                                        <span class="text-sm text-[var(--ui-secondary)]">Serientermin</span>
+                                        @if($meeting->getRecurrencePatternText())
+                                            <span class="text-xs text-[var(--ui-muted)]">{{ $meeting->getRecurrencePatternText() }}</span>
+                                        @endif
+                                    </div>
                                 </div>
                                 <x-ui-badge variant="warning" size="xs">Wiederkehrend</x-ui-badge>
+                            </div>
+                        @endif
+                        @if($meeting->getTeamsJoinUrl())
+                            <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
+                                <div class="flex items-center gap-2">
+                                    @svg('heroicon-o-video-camera', 'w-4 h-4 text-[var(--ui-primary)]')
+                                    <span class="text-sm text-[var(--ui-secondary)]">Teams Meeting</span>
+                                </div>
+                                <a 
+                                    href="{{ $meeting->getTeamsJoinUrl() }}" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                                >
+                                    @svg('heroicon-o-arrow-top-right-on-square', 'w-3 h-3')
+                                    Beitreten
+                                </a>
                             </div>
                         @endif
                         <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
@@ -248,10 +270,27 @@
                                         {{ $appointment->user->fullname ?? $appointment->user->name }}
                                     </h3>
                                     @if($appointment->meeting->isRecurring())
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 flex-shrink-0" title="Serientermin">
-                                            @svg('heroicon-o-arrow-path', 'w-3 h-3')
-                                            Serie
-                                        </span>
+                                        <div class="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" title="Serientermin">
+                                                @svg('heroicon-o-arrow-path', 'w-3 h-3')
+                                                Serie
+                                            </span>
+                                            @if($appointment->meeting->getRecurrencePatternText())
+                                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ $appointment->meeting->getRecurrencePatternText() }}</span>
+                                            @endif
+                                        </div>
+                                    @endif
+                                    @if($appointment->meeting->getTeamsJoinUrl())
+                                        <a 
+                                            href="{{ $appointment->meeting->getTeamsJoinUrl() }}" 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors flex-shrink-0"
+                                            title="Teams Meeting beitreten"
+                                        >
+                                            @svg('heroicon-o-video-camera', 'w-3 h-3')
+                                            <span class="hidden sm:inline">Teams</span>
+                                        </a>
                                     @endif
                                 </div>
                                 <dl class="flex flex-col gap-1.5 text-sm text-gray-500 dark:text-gray-400">

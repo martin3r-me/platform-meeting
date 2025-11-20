@@ -104,7 +104,26 @@
                         @if($appointment->meeting->isRecurring())
                             <div class="flex justify-between py-1">
                                 <span class="text-[var(--ui-muted)]">Typ:</span>
-                                <x-ui-badge variant="warning" size="xs">Serientermin</x-ui-badge>
+                                <div class="flex flex-col items-end gap-1">
+                                    <x-ui-badge variant="warning" size="xs">Serientermin</x-ui-badge>
+                                    @if($appointment->meeting->getRecurrencePatternText())
+                                        <span class="text-xs text-[var(--ui-muted)]">{{ $appointment->meeting->getRecurrencePatternText() }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
+                        @if($appointment->meeting->getTeamsJoinUrl())
+                            <div class="flex justify-between py-1">
+                                <span class="text-[var(--ui-muted)]">Teams:</span>
+                                <a 
+                                    href="{{ $appointment->meeting->getTeamsJoinUrl() }}" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                                >
+                                    @svg('heroicon-o-arrow-top-right-on-square', 'w-3 h-3')
+                                    Beitreten
+                                </a>
                             </div>
                         @endif
                         <div class="flex justify-between py-1">
