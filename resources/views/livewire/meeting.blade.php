@@ -63,10 +63,34 @@
                         @if($meeting->location)
                             <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
                                 <div class="flex items-center gap-2">
-                                    @svg('heroicon-o-map-pin', 'w-4 h-4 text-[var(--ui-primary)]')
+                                    @if($meeting->isTeamsCall())
+                                        @svg('heroicon-o-video-camera', 'w-4 h-4 text-[var(--ui-primary)]')
+                                    @elseif($meeting->isOnlineMeeting())
+                                        @svg('heroicon-o-link', 'w-4 h-4 text-[var(--ui-primary)]')
+                                    @else
+                                        @svg('heroicon-o-map-pin', 'w-4 h-4 text-[var(--ui-primary)]')
+                                    @endif
                                     <span class="text-sm text-[var(--ui-secondary)]">Ort</span>
                                 </div>
-                                <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $meeting->location }}</span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-sm font-semibold text-[var(--ui-secondary)]">{{ $meeting->location }}</span>
+                                    @if($meeting->isTeamsCall())
+                                        <x-ui-badge variant="primary" size="xs">Teams</x-ui-badge>
+                                    @elseif($meeting->isOnlineMeeting())
+                                        <x-ui-badge variant="info" size="xs">Online</x-ui-badge>
+                                    @elseif($meeting->isRoom())
+                                        <x-ui-badge variant="secondary" size="xs">Raum</x-ui-badge>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
+                        @if($meeting->isRecurring())
+                            <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
+                                <div class="flex items-center gap-2">
+                                    @svg('heroicon-o-arrow-path', 'w-4 h-4 text-[var(--ui-primary)]')
+                                    <span class="text-sm text-[var(--ui-secondary)]">Serientermin</span>
+                                </div>
+                                <x-ui-badge variant="warning" size="xs">Wiederkehrend</x-ui-badge>
                             </div>
                         @endif
                         <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
@@ -99,7 +123,10 @@
                             <div class="flex items-center justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
                                 <div class="flex items-center gap-2">
                                     @svg('heroicon-o-user', 'w-4 h-4 text-[var(--ui-muted)]')
-                                    <span class="text-sm text-[var(--ui-secondary)]">{{ $participant->user->fullname ?? $participant->user->name }}</span>
+                                    <span class="text-sm text-[var(--ui-secondary)]">{{ $participant->display_name }}</span>
+                                    @if($participant->isExternal())
+                                        <x-ui-badge variant="muted" size="xs">Extern</x-ui-badge>
+                                    @endif
                                     @if($participant->role === 'organizer')
                                         <x-ui-badge variant="primary" size="xs">Organisator</x-ui-badge>
                                     @endif
@@ -236,14 +263,60 @@
                                     </div>
                                     {{-- Ort --}}
                                     @if($appointment->location ?? $appointment->meeting->location)
+                                        @php
+                                            $location = $appointment->location ?? $appointment->meeting->location;
+                                            $locationType = $appointment->meeting->getLocationType();
+                                        @endphp
                                         <div class="mt-2 flex items-start gap-x-3 xl:mt-0 xl:ml-3.5 xl:border-l xl:border-gray-400/50 xl:pl-3.5 dark:xl:border-gray-500/50">
                                             <dt class="mt-0.5">
                                                 <span class="sr-only">Ort</span>
+                                                @if($locationType === 'teams')
+                                                    <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-5 text-gray-400 dark:text-gray-500">
+                                                        <path d="M3.25 4A2.25 2.25 0 0 0 1 6.25v7.5A2.25 2.25 0 0 0 3.25 16h7.5A2.25 2.25 0 0 0 13 13.75v-7.5A2.25 2.25 0 0 0 10.75 4h-7.5ZM2.5 6.25c0-.414.336-.75.75-.75h7.5c.414 0 .75.336.75.75v7.5a.75.75 0 0 1-.75.75h-7.5a.75.75 0 0 1-.75-.75v-7.5ZM18.25 7.5a.75.75 0 0 0-1.5 0v5.75a.75.75 0 0 1-.75.75H9.31l1.47 1.47a.75.75 0 1 0 1.06-1.06l-2.75-2.75a.75.75 0 0 0-1.06 0l-2.75 2.75a.75.75 0 1 0 1.06 1.06l1.47-1.47h6.44A2.25 2.25 0 0 0 18.25 13.25V7.5Z" />
+                                                    </svg>
+                                                @elseif($locationType === 'online')
+                                                    <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-5 text-gray-400 dark:text-gray-500">
+                                                        <path d="M10.75 10.818v2.614A3.13 3.13 0 0 0 11.888 13c.482-.315.612-.648.612-.875 0-.227-.13-.56-.612-.875a3.13 3.13 0 0 0-1.138-.432ZM8.33 8.62c.053.055.115.11.184.164.208.16.46.284.736.363V6.603a2.45 2.45 0 0 0-.35.13c-.14.065-.27.143-.386.233-.377.292-.514.627-.514.909 0 .184.058.39.202.592.037.051.08.102.128.152Z" />
+                                                        <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-6a.75.75 0 0 1 .75.75v.316a3.78 3.78 0 0 1 .653.38c.58.319.808.785.808 1.27 0 .514-.29.902-.808 1.27a3.78 3.78 0 0 1-.653.38V9.25A.75.75 0 0 1 10 8.5v-.316a3.78 3.78 0 0 1-.653-.38C8.79 7.46 8.562 6.994 8.562 6.5c0-.514.29-.902.808-1.27a3.78 3.78 0 0 1 .653-.38V4.25A.75.75 0 0 1 10 3.5V4Z" clip-rule="evenodd" />
+                                                    </svg>
+                                                @else
+                                                    <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-5 text-gray-400 dark:text-gray-500">
+                                                        <path d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clip-rule="evenodd" fill-rule="evenodd" />
+                                                    </svg>
+                                                @endif
+                                            </dt>
+                                            <dd class="flex items-center gap-2">
+                                                <span>{{ $location }}</span>
+                                                @if($locationType === 'teams')
+                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                                                        Teams
+                                                    </span>
+                                                @elseif($locationType === 'online')
+                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                                                        Online
+                                                    </span>
+                                                @elseif($locationType === 'room')
+                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">
+                                                        Raum
+                                                    </span>
+                                                @endif
+                                            </dd>
+                                        </div>
+                                    @endif
+                                    {{-- Serientermin Badge --}}
+                                    @if($appointment->meeting->isRecurring())
+                                        <div class="mt-2 flex items-start gap-x-3 xl:mt-0 xl:ml-3.5 xl:border-l xl:border-gray-400/50 xl:pl-3.5 dark:xl:border-gray-500/50">
+                                            <dt class="mt-0.5">
+                                                <span class="sr-only">Serientermin</span>
                                                 <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-5 text-gray-400 dark:text-gray-500">
-                                                    <path d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clip-rule="evenodd" fill-rule="evenodd" />
+                                                    <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z" clip-rule="evenodd" />
                                                 </svg>
                                             </dt>
-                                            <dd>{{ $appointment->location ?? $appointment->meeting->location }}</dd>
+                                            <dd>
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                                                    Serientermin
+                                                </span>
+                                            </dd>
                                         </div>
                                     @endif
                                 </dl>

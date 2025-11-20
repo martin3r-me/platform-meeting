@@ -14,6 +14,8 @@ class MeetingParticipant extends Model
     protected $fillable = [
         'meeting_id',
         'user_id',
+        'email', // Für externe Teilnehmer ohne User-Account
+        'name', // Für externe Teilnehmer ohne User-Account
         'role',
         'response_status',
         'response_time',
@@ -32,6 +34,26 @@ class MeetingParticipant extends Model
     public function user()
     {
         return $this->belongsTo(\Platform\Core\Models\User::class);
+    }
+
+    /**
+     * Gibt den Anzeigenamen zurück (User oder externer Teilnehmer)
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        if ($this->user) {
+            return $this->user->fullname ?? $this->user->name;
+        }
+        
+        return $this->name ?? $this->email ?? 'Unbekannt';
+    }
+
+    /**
+     * Prüft ob es ein externer Teilnehmer ist (ohne User-Account)
+     */
+    public function isExternal(): bool
+    {
+        return empty($this->user_id) && !empty($this->email);
     }
 }
 

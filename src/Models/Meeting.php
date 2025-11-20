@@ -91,5 +91,86 @@ class Meeting extends Model implements HasDisplayName
     {
         return $this->title;
     }
+
+    /**
+     * Prüft ob es ein Teams Call ist
+     */
+    public function isTeamsCall(): bool
+    {
+        return !empty($this->microsoft_online_meeting_id) || 
+               (str_contains(strtolower($this->location ?? ''), 'teams') ||
+                str_contains(strtolower($this->location ?? ''), 'microsoft teams'));
+    }
+
+    /**
+     * Prüft ob es ein Raum ist
+     */
+    public function isRoom(): bool
+    {
+        if (empty($this->location)) {
+            return false;
+        }
+        
+        // Wenn es ein Teams Call ist, ist es kein Raum
+        if ($this->isTeamsCall()) {
+            return false;
+        }
+        
+        // Wenn es eine URL ist (z.B. Zoom, Google Meet), ist es kein Raum
+        if (filter_var($this->location, FILTER_VALIDATE_URL)) {
+            return false;
+        }
+        
+        // Ansonsten ist es wahrscheinlich ein Raum
+        return true;
+    }
+
+    /**
+     * Prüft ob es ein Online-Meeting ist (Teams, Zoom, etc.)
+     */
+    public function isOnlineMeeting(): bool
+    {
+        if ($this->isTeamsCall()) {
+            return true;
+        }
+        
+        if (empty($this->location)) {
+            return false;
+        }
+        
+        $location = strtolower($this->location);
+        return str_contains($location, 'zoom') ||
+               str_contains($location, 'google meet') ||
+               str_contains($location, 'webex') ||
+               filter_var($this->location, FILTER_VALIDATE_URL);
+    }
+
+    /**
+     * Gibt den Location-Typ zurück
+     */
+    public function getLocationType(): string
+    {
+        if ($this->isTeamsCall()) {
+            return 'teams';
+        }
+        
+        if ($this->isOnlineMeeting()) {
+            return 'online';
+        }
+        
+        if ($this->isRoom()) {
+            return 'room';
+        }
+        
+        return 'other';
+    }
+
+    /**
+     * Prüft ob es ein Serientermin ist
+     */
+    public function isRecurring(): bool
+    {
+        return !empty($this->recurring_meeting_id) || $this->is_series_instance;
+    }
 }
 

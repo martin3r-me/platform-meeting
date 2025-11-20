@@ -82,11 +82,29 @@
                             </span>
                         </div>
                         @if($appointment->meeting->location)
+                            @php
+                                $locationType = $appointment->meeting->getLocationType();
+                            @endphp
                             <div class="flex justify-between py-1">
                                 <span class="text-[var(--ui-muted)]">Ort:</span>
-                                <span class="text-[var(--ui-secondary)] font-medium">
-                                    {{ $appointment->meeting->location }}
-                                </span>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[var(--ui-secondary)] font-medium">
+                                        {{ $appointment->meeting->location }}
+                                    </span>
+                                    @if($locationType === 'teams')
+                                        <x-ui-badge variant="primary" size="xs">Teams</x-ui-badge>
+                                    @elseif($locationType === 'online')
+                                        <x-ui-badge variant="info" size="xs">Online</x-ui-badge>
+                                    @elseif($locationType === 'room')
+                                        <x-ui-badge variant="secondary" size="xs">Raum</x-ui-badge>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
+                        @if($appointment->meeting->isRecurring())
+                            <div class="flex justify-between py-1">
+                                <span class="text-[var(--ui-muted)]">Typ:</span>
+                                <x-ui-badge variant="warning" size="xs">Serientermin</x-ui-badge>
                             </div>
                         @endif
                         <div class="flex justify-between py-1">
