@@ -10,8 +10,10 @@ use Illuminate\Support\Facades\Auth;
 use Platform\ActivityLog\Traits\LogsActivity;
 use Platform\Media\Traits\HasMedia;
 use Platform\Core\Contracts\HasDisplayName;
+use Platform\Core\Contracts\HasTimeAncestors;
+use Platform\Core\Contracts\HasKeyResultAncestors;
 
-class Meeting extends Model implements HasDisplayName
+class Meeting extends Model implements HasDisplayName, HasTimeAncestors, HasKeyResultAncestors
 {
     use HasFactory, SoftDeletes, LogsActivity, HasMedia;
 
@@ -240,6 +242,32 @@ class Meeting extends Model implements HasDisplayName
         return $this->microsoft_teams_join_url 
             ?? $this->microsoft_teams_web_url
             ?? null;
+    }
+
+    /**
+     * Gibt alle Vorfahren-Kontexte für die Zeitkaskade zurück.
+     * Meeting → Meeting selbst (als Root)
+     * 
+     * Wenn direkt auf Meeting-Level Zeit erfasst wird, ist das Meeting selbst der Root-Kontext.
+     */
+    public function timeAncestors(): array
+    {
+        // Bei Meetings ist das Meeting selbst der Root-Kontext
+        // Wir geben ein leeres Array zurück, da das Meeting selbst bereits als context_type/context_id gesetzt ist
+        return [];
+    }
+
+    /**
+     * Gibt alle Vorfahren-Kontexte für die KeyResult-Kaskade zurück.
+     * Meeting → Meeting selbst (als Root)
+     * 
+     * Wenn direkt auf Meeting-Level KeyResults verknüpft werden, ist das Meeting selbst der Root-Kontext.
+     */
+    public function keyResultAncestors(): array
+    {
+        // Bei Meetings ist das Meeting selbst der Root-Kontext
+        // Wir geben ein leeres Array zurück, da das Meeting selbst bereits als context_type/context_id gesetzt ist
+        return [];
     }
 }
 

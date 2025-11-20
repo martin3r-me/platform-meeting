@@ -171,12 +171,20 @@ class Meeting extends Component
             ],
         ]);
 
+        // Organization-Kontext setzen - nur Zeiten erlauben, keine Entity-Verknüpfung (analog zu Project)
         $this->dispatch('organization', [
             'context_type' => get_class($this->meeting),
             'context_id' => $this->meeting->id,
+            'linked_contexts' => [],
             'allow_time_entry' => true,
-            'allow_context_management' => true,
-            'can_link_to_entity' => true,
+            'allow_context_management' => false,
+            'can_link_to_entity' => false,
+        ]);
+
+        // KeyResult-Kontext setzen - ermöglicht Verknüpfung von KeyResults mit diesem Meeting
+        $this->dispatch('keyresult', [
+            'context_type' => get_class($this->meeting),
+            'context_id' => $this->meeting->id,
         ]);
     }
 

@@ -5,8 +5,10 @@ namespace Platform\Meetings\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Facades\Auth;
+use Platform\Core\Contracts\HasTimeAncestors;
+use Platform\Core\Contracts\HasKeyResultAncestors;
 
-class Appointment extends Model
+class Appointment extends Model implements HasTimeAncestors, HasKeyResultAncestors
 {
     use HasFactory;
 
@@ -78,6 +80,48 @@ class Appointment extends Model
             ?? $this->microsoft_teams_web_url
             ?? $this->meeting?->getTeamsJoinUrl()
             ?? null;
+    }
+
+    /**
+     * Gibt alle Vorfahren-Kontexte für die Zeitkaskade zurück.
+     * Appointment → Meeting (als Root)
+     */
+    public function timeAncestors(): array
+    {
+        $ancestors = [];
+
+        // Meeting als Root-Kontext (bei Appointments ist das Meeting immer der Root)
+        if ($this->meeting) {
+            $ancestors[] = [
+                'type' => get_class($this->meeting),
+                'id' => $this->meeting->id,
+                'is_root' => true, // Meeting ist Root-Kontext für Appointments
+                'label' => $this->meeting->title,
+            ];
+        }
+
+        return $ancestors;
+    }
+
+    /**
+     * Gibt alle Vorfahren-Kontexte für die KeyResult-Kaskade zurück.
+     * Appointment → Meeting (als Root)
+     */
+    public function keyResultAncestors(): array
+    {
+        $ancestors = [];
+
+        // Meeting als Root-Kontext (bei Appointments ist das Meeting immer der Root)
+        if ($this->meeting) {
+            $ancestors[] = [
+                'type' => get_class($this->meeting),
+                'id' => $this->meeting->id,
+                'is_root' => true, // Meeting ist Root-Kontext für Appointments
+                'label' => $this->meeting->title,
+            ];
+        }
+
+        return $ancestors;
     }
 }
 
