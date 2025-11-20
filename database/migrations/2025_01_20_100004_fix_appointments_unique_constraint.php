@@ -11,7 +11,36 @@ return new class extends Migration
         $connection = Schema::getConnection();
         $databaseName = $connection->getDatabaseName();
         
-        // Prüfe ob die alte Unique Constraint existiert
+        // SCHRITT 1: Duplikate bereinigen (behält das neueste Appointment pro microsoft_event_id)
+        $duplicates = $connection->select(
+            "SELECT microsoft_event_id, COUNT(*) as count 
+             FROM meetings_appointments 
+             WHERE microsoft_event_id IS NOT NULL 
+             GROUP BY microsoft_event_id 
+             HAVING count > 1"
+        );
+        
+        foreach ($duplicates as $duplicate) {
+            // Behalte das neueste Appointment, lösche die älteren
+            $keepId = $connection->selectOne(
+                "SELECT id FROM meetings_appointments 
+                 WHERE microsoft_event_id = ? 
+                 ORDER BY created_at DESC, id DESC 
+                 LIMIT 1",
+                [$duplicate->microsoft_event_id]
+            );
+            
+            if ($keepId) {
+                // Lösche alle anderen Duplikate
+                $connection->statement(
+                    "DELETE FROM meetings_appointments 
+                     WHERE microsoft_event_id = ? AND id != ?",
+                    [$duplicate->microsoft_event_id, $keepId->id]
+                );
+            }
+        }
+        
+        // SCHRITT 2: Alte Unique Constraint entfernen (wenn vorhanden)
         $indexExists = $connection->select(
             "SELECT COUNT(*) as count FROM information_schema.statistics 
              WHERE table_schema = ? AND table_name = ? AND index_name = ?",
@@ -20,7 +49,6 @@ return new class extends Migration
         
         if ($indexExists[0]->count > 0) {
             // Foreign Key Constraints finden und temporär entfernen
-            // MySQL benennt Foreign Keys automatisch: meetings_appointments_meeting_id_foreign, etc.
             $foreignKeys = $connection->select(
                 "SELECT CONSTRAINT_NAME 
                  FROM information_schema.TABLE_CONSTRAINTS 
@@ -30,14 +58,14 @@ return new class extends Migration
                 [$databaseName, 'meetings_appointments']
             );
             
-            // Foreign Keys temporär entfernen (falls vorhanden)
+            // Foreign Keys temporär entfernen
             foreach ($foreignKeys as $fk) {
                 Schema::table('meetings_appointments', function (Blueprint $table) use ($fk) {
                     $table->dropForeign($fk->CONSTRAINT_NAME);
                 });
             }
             
-            // Jetzt kann der Index gelöscht werden
+            // Index löschen
             Schema::table('meetings_appointments', function (Blueprint $table) {
                 $table->dropUnique(['meeting_id', 'user_id']);
             });
@@ -49,7 +77,7 @@ return new class extends Migration
             });
         }
         
-        // Neue Unique Constraints hinzufügen (nur wenn noch nicht vorhanden)
+        // SCHRITT 3: Neue Unique Constraints hinzufügen (nur wenn noch nicht vorhanden)
         $microsoftEventIdIndex = $connection->select(
             "SELECT COUNT(*) as count FROM information_schema.statistics 
              WHERE table_schema = ? AND table_name = ? AND index_name = ?",
@@ -63,12 +91,10 @@ return new class extends Migration
         );
         
         Schema::table('meetings_appointments', function (Blueprint $table) use ($microsoftEventIdIndex, $meetingUserStartIndex) {
-            // Unique Constraint für microsoft_event_id (wenn nicht NULL)
             if ($microsoftEventIdIndex[0]->count == 0) {
                 $table->unique('microsoft_event_id', 'meetings_appointments_microsoft_event_id_unique');
             }
             
-            // Zusätzlich: Unique Constraint für meeting_id + user_id + start_date
             if ($meetingUserStartIndex[0]->count == 0) {
                 $table->unique(['meeting_id', 'user_id', 'start_date'], 'meetings_appointments_meeting_user_start_unique');
             }
