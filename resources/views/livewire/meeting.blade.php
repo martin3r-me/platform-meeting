@@ -232,34 +232,37 @@
                 {{-- Linke Spalte: Termine-Liste --}}
                 <ol class="mt-4 divide-y divide-gray-100 text-sm/6 lg:col-span-7 xl:col-span-8 dark:divide-white/10">
                     @forelse($appointments->sortBy('start_date') as $appointment)
-                        <li class="relative flex gap-x-6 py-6 xl:static">
+                        <li class="relative flex gap-x-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded-lg transition-colors group">
                             {{-- Avatar --}}
                             @if($appointment->user->avatar ?? null)
-                                <img src="{{ $appointment->user->avatar }}" alt="{{ $appointment->user->name }}" class="size-14 flex-none rounded-full dark:outline dark:-outline-offset-1 dark:outline-white/10" />
+                                <img src="{{ $appointment->user->avatar }}" alt="{{ $appointment->user->name }}" class="size-8 flex-none rounded-full dark:outline dark:-outline-offset-1 dark:outline-white/10" />
                             @else
-                                <div class="size-14 flex-none rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-lg font-medium text-gray-600 dark:text-gray-300 dark:outline dark:-outline-offset-1 dark:outline-white/10">
+                                <div class="size-8 flex-none rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-300 dark:outline dark:-outline-offset-1 dark:outline-white/10">
                                     {{ strtoupper(substr($appointment->user->name ?? '?', 0, 1)) }}
                                 </div>
                             @endif
 
-                            <div class="flex-auto">
-                                <h3 class="pr-10 font-semibold text-gray-900 xl:pr-0 dark:text-white">
-                                    {{ $appointment->user->fullname ?? $appointment->user->name }}
-                                </h3>
-                                <dl class="mt-2 flex flex-col text-gray-500 xl:flex-row dark:text-gray-400">
+                            <div class="flex-auto min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <h3 class="font-semibold text-gray-900 dark:text-white truncate">
+                                        {{ $appointment->user->fullname ?? $appointment->user->name }}
+                                    </h3>
+                                    @if($appointment->meeting->isRecurring())
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 flex-shrink-0" title="Serientermin">
+                                            @svg('heroicon-o-arrow-path', 'w-3 h-3')
+                                            Serie
+                                        </span>
+                                    @endif
+                                </div>
+                                <dl class="flex flex-col gap-1.5 text-sm text-gray-500 dark:text-gray-400">
                                     {{-- Datum & Zeit --}}
-                                    <div class="flex items-start gap-x-3">
-                                        <dt class="mt-0.5">
-                                            <span class="sr-only">Datum</span>
-                                            <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-5 text-gray-400 dark:text-gray-500">
-                                                <path d="M5.75 2a.75.75 0 0 1 .75.75V4h7V2.75a.75.75 0 0 1 1.5 0V4h.25A2.75 2.75 0 0 1 18 6.75v8.5A2.75 2.75 0 0 1 15.25 18H4.75A2.75 2.75 0 0 1 2 15.25v-8.5A2.75 2.75 0 0 1 4.75 4H5V2.75A.75.75 0 0 1 5.75 2Zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75Z" clip-rule="evenodd" fill-rule="evenodd" />
-                                            </svg>
-                                        </dt>
-                                        <dd>
-                                            <time datetime="{{ $appointment->start_date->toIso8601String() }}">
-                                                {{ $appointment->start_date->locale('de')->isoFormat('D. MMMM YYYY [um] HH:mm') }} Uhr
-                                            </time>
-                                        </dd>
+                                    <div class="flex items-center gap-2">
+                                        <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-4 text-gray-400 dark:text-gray-500 flex-shrink-0">
+                                            <path d="M5.75 2a.75.75 0 0 1 .75.75V4h7V2.75a.75.75 0 0 1 1.5 0V4h.25A2.75 2.75 0 0 1 18 6.75v8.5A2.75 2.75 0 0 1 15.25 18H4.75A2.75 2.75 0 0 1 2 15.25v-8.5A2.75 2.75 0 0 1 4.75 4H5V2.75A.75.75 0 0 1 5.75 2Zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75Z" clip-rule="evenodd" fill-rule="evenodd" />
+                                        </svg>
+                                        <time datetime="{{ $appointment->start_date->toIso8601String() }}" class="font-medium">
+                                            {{ $appointment->start_date->locale('de')->isoFormat('D. MMMM YYYY [um] HH:mm') }} Uhr
+                                        </time>
                                     </div>
                                     {{-- Ort --}}
                                     @if($appointment->location ?? $appointment->meeting->location)
@@ -267,99 +270,62 @@
                                             $location = $appointment->location ?? $appointment->meeting->location;
                                             $locationType = $appointment->meeting->getLocationType();
                                         @endphp
-                                        <div class="mt-2 flex items-start gap-x-3 xl:mt-0 xl:ml-3.5 xl:border-l xl:border-gray-400/50 xl:pl-3.5 dark:xl:border-gray-500/50">
-                                            <dt class="mt-0.5">
-                                                <span class="sr-only">Ort</span>
-                                                @if($locationType === 'teams')
-                                                    <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-5 text-gray-400 dark:text-gray-500">
-                                                        <path d="M3.25 4A2.25 2.25 0 0 0 1 6.25v7.5A2.25 2.25 0 0 0 3.25 16h7.5A2.25 2.25 0 0 0 13 13.75v-7.5A2.25 2.25 0 0 0 10.75 4h-7.5ZM2.5 6.25c0-.414.336-.75.75-.75h7.5c.414 0 .75.336.75.75v7.5a.75.75 0 0 1-.75.75h-7.5a.75.75 0 0 1-.75-.75v-7.5ZM18.25 7.5a.75.75 0 0 0-1.5 0v5.75a.75.75 0 0 1-.75.75H9.31l1.47 1.47a.75.75 0 1 0 1.06-1.06l-2.75-2.75a.75.75 0 0 0-1.06 0l-2.75 2.75a.75.75 0 1 0 1.06 1.06l1.47-1.47h6.44A2.25 2.25 0 0 0 18.25 13.25V7.5Z" />
-                                                    </svg>
-                                                @elseif($locationType === 'online')
-                                                    <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-5 text-gray-400 dark:text-gray-500">
-                                                        <path d="M10.75 10.818v2.614A3.13 3.13 0 0 0 11.888 13c.482-.315.612-.648.612-.875 0-.227-.13-.56-.612-.875a3.13 3.13 0 0 0-1.138-.432ZM8.33 8.62c.053.055.115.11.184.164.208.16.46.284.736.363V6.603a2.45 2.45 0 0 0-.35.13c-.14.065-.27.143-.386.233-.377.292-.514.627-.514.909 0 .184.058.39.202.592.037.051.08.102.128.152Z" />
-                                                        <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-6a.75.75 0 0 1 .75.75v.316a3.78 3.78 0 0 1 .653.38c.58.319.808.785.808 1.27 0 .514-.29.902-.808 1.27a3.78 3.78 0 0 1-.653.38V9.25A.75.75 0 0 1 10 8.5v-.316a3.78 3.78 0 0 1-.653-.38C8.79 7.46 8.562 6.994 8.562 6.5c0-.514.29-.902.808-1.27a3.78 3.78 0 0 1 .653-.38V4.25A.75.75 0 0 1 10 3.5V4Z" clip-rule="evenodd" />
-                                                    </svg>
-                                                @else
-                                                    <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-5 text-gray-400 dark:text-gray-500">
-                                                        <path d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clip-rule="evenodd" fill-rule="evenodd" />
-                                                    </svg>
-                                                @endif
-                                            </dt>
-                                            <dd class="flex items-center gap-2">
-                                                <span>{{ $location }}</span>
-                                                @if($locationType === 'teams')
-                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                                                        Teams
-                                                    </span>
-                                                @elseif($locationType === 'online')
-                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-                                                        Online
-                                                    </span>
-                                                @elseif($locationType === 'room')
-                                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">
-                                                        Raum
-                                                    </span>
-                                                @endif
-                                            </dd>
-                                        </div>
-                                    @endif
-                                    {{-- Serientermin Badge --}}
-                                    @if($appointment->meeting->isRecurring())
-                                        <div class="mt-2 flex items-start gap-x-3 xl:mt-0 xl:ml-3.5 xl:border-l xl:border-gray-400/50 xl:pl-3.5 dark:xl:border-gray-500/50">
-                                            <dt class="mt-0.5">
-                                                <span class="sr-only">Serientermin</span>
-                                                <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-5 text-gray-400 dark:text-gray-500">
-                                                    <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z" clip-rule="evenodd" />
+                                        <div class="flex items-center gap-2">
+                                            @if($locationType === 'teams')
+                                                <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-4 text-blue-500 dark:text-blue-400 flex-shrink-0">
+                                                    <path d="M3.25 4A2.25 2.25 0 0 0 1 6.25v7.5A2.25 2.25 0 0 0 3.25 16h7.5A2.25 2.25 0 0 0 13 13.75v-7.5A2.25 2.25 0 0 0 10.75 4h-7.5ZM2.5 6.25c0-.414.336-.75.75-.75h7.5c.414 0 .75.336.75.75v7.5a.75.75 0 0 1-.75.75h-7.5a.75.75 0 0 1-.75-.75v-7.5ZM18.25 7.5a.75.75 0 0 0-1.5 0v5.75a.75.75 0 0 1-.75.75H9.31l1.47 1.47a.75.75 0 1 0 1.06-1.06l-2.75-2.75a.75.75 0 0 0-1.06 0l-2.75 2.75a.75.75 0 1 0 1.06 1.06l1.47-1.47h6.44A2.25 2.25 0 0 0 18.25 13.25V7.5Z" />
                                                 </svg>
-                                            </dt>
-                                            <dd>
-                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
-                                                    Serientermin
+                                            @elseif($locationType === 'online')
+                                                <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-4 text-green-500 dark:text-green-400 flex-shrink-0">
+                                                    <path d="M10.75 10.818v2.614A3.13 3.13 0 0 0 11.888 13c.482-.315.612-.648.612-.875 0-.227-.13-.56-.612-.875a3.13 3.13 0 0 0-1.138-.432ZM8.33 8.62c.053.055.115.11.184.164.208.16.46.284.736.363V6.603a2.45 2.45 0 0 0-.35.13c-.14.065-.27.143-.386.233-.377.292-.514.627-.514.909 0 .184.058.39.202.592.037.051.08.102.128.152Z" />
+                                                    <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-6a.75.75 0 0 1 .75.75v.316a3.78 3.78 0 0 1 .653.38c.58.319.808.785.808 1.27 0 .514-.29.902-.808 1.27a3.78 3.78 0 0 1-.653.38V9.25A.75.75 0 0 1 10 8.5v-.316a3.78 3.78 0 0 1-.653-.38C8.79 7.46 8.562 6.994 8.562 6.5c0-.514.29-.902.808-1.27a3.78 3.78 0 0 1 .653-.38V4.25A.75.75 0 0 1 10 3.5V4Z" clip-rule="evenodd" />
+                                                </svg>
+                                            @else
+                                                <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-4 text-gray-400 dark:text-gray-500 flex-shrink-0">
+                                                    <path d="m9.69 18.933.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 .976.544l.062.029.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clip-rule="evenodd" fill-rule="evenodd" />
+                                                </svg>
+                                            @endif
+                                            <span class="truncate">{{ $location }}</span>
+                                            @if($locationType === 'teams')
+                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 flex-shrink-0">
+                                                    Teams
                                                 </span>
-                                            </dd>
+                                            @elseif($locationType === 'online')
+                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 flex-shrink-0">
+                                                    Online
+                                                </span>
+                                            @elseif($locationType === 'room')
+                                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300 flex-shrink-0">
+                                                    Raum
+                                                </span>
+                                            @endif
                                         </div>
                                     @endif
                                 </dl>
                             </div>
 
-                            {{-- Dropdown Menu --}}
-                            <div class="absolute top-6 right-0 xl:relative xl:top-auto xl:right-auto xl:self-center">
-                                <div class="relative" x-data="{ open: false }">
+                            {{-- Aktionen direkt sichtbar --}}
+                            <div class="flex items-center gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <a 
+                                    href="{{ route('meetings.appointments.show', $appointment) }}" 
+                                    wire:navigate
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
+                                    title="Termin anzeigen"
+                                >
+                                    @svg('heroicon-o-eye', 'w-4 h-4')
+                                    <span class="hidden sm:inline">Anzeigen</span>
+                                </a>
+                                @can('update', $meeting)
                                     <button 
-                                        @click="open = !open"
-                                        class="relative flex items-center rounded-full text-gray-500 hover:text-gray-600 dark:text-gray-400 dark:hover:text-white"
+                                        wire:click="deleteAppointment({{ $appointment->id }})"
+                                        wire:confirm="Möchten Sie diesen Termin wirklich löschen?"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 transition-colors"
+                                        title="Termin löschen"
                                     >
-                                        <span class="absolute -inset-2"></span>
-                                        <span class="sr-only">Optionen öffnen</span>
-                                        <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" class="size-5">
-                                            <path d="M3 10a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0ZM8.5 10a1.5 1.5 0 1 1 3 0 1.5 1.5 0 0 1-3 0ZM15.5 8.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z" />
-                                        </svg>
+                                        @svg('heroicon-o-trash', 'w-4 h-4')
+                                        <span class="hidden sm:inline">Löschen</span>
                                     </button>
-                                    <div 
-                                        x-show="open"
-                                        @click.away="open = false"
-                                        x-transition
-                                        class="absolute right-0 z-10 mt-2 w-36 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-gray-800 dark:ring-white/10"
-                                    >
-                                        <div class="py-1">
-                                            <a 
-                                                href="{{ route('meetings.appointments.show', $appointment) }}" 
-                                                wire:navigate
-                                                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900 focus:outline-hidden dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-white dark:focus:bg-white/5 dark:focus:text-white"
-                                            >
-                                                Anzeigen
-                                            </a>
-                                            @can('update', $meeting)
-                                                <button 
-                                                    wire:click="deleteAppointment({{ $appointment->id }})"
-                                                    class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900 focus:outline-hidden dark:text-gray-300 dark:hover:bg-white/5 dark:hover:text-white dark:focus:bg-white/5 dark:focus:text-white"
-                                                >
-                                                    Löschen
-                                                </button>
-                                            @endcan
-                                        </div>
-                                    </div>
-                                </div>
+                                @endcan
                             </div>
                         </li>
                     @empty
