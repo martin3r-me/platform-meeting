@@ -164,9 +164,11 @@ class SyncCalendarEvents extends Command
             return ['created' => false, 'meetings' => 0, 'appointments' => 0, 'title' => ''];
         }
 
-        // Prüfe ob Event bereits existiert
+        // Prüfe ob Event bereits existiert - wenn ja, aktualisiere es
         $existingMeeting = Meeting::where('microsoft_event_id', $eventId)->first();
         if ($existingMeeting) {
+            // Update Meeting-Daten (falls sich etwas geändert hat)
+            $this->updateMeetingFromEvent($existingMeeting, $event);
             return ['created' => false, 'meetings' => 0, 'appointments' => 0, 'title' => $event['subject'] ?? ''];
         }
 
@@ -190,6 +192,11 @@ class SyncCalendarEvents extends Command
                 if ($meeting) {
                     $this->syncParticipantsFromEvent($meeting, $event);
                 }
+            } else {
+                // Meeting existiert bereits - aktualisiere es (falls sich etwas geändert hat)
+                $this->updateSeriesMeetingFromEvent($meeting, $event);
+                // Teilnehmer synchronisieren (könnten sich geändert haben)
+                $this->syncParticipantsFromEvent($meeting, $event);
             }
             
             if (!$meeting) {
@@ -209,7 +216,9 @@ class SyncCalendarEvents extends Command
                 // Prüfe ob Appointment für diese Instanz bereits existiert (über microsoft_event_id)
                 $existingAppointment = Appointment::where('microsoft_event_id', $instanceEventId)->first();
                 if ($existingAppointment) {
-                    continue; // Bereits vorhanden
+                    // Appointment existiert bereits - aktualisiere es (falls sich etwas geändert hat)
+                    $this->updateAppointmentFromEvent($existingAppointment, $instance);
+                    continue;
                 }
                 
                 // Parse Datum/Zeit der Instanz
@@ -385,6 +394,8 @@ class SyncCalendarEvents extends Command
         // microsoft_event_id ist eindeutig und team-übergreifend
         $existingAppointment = Appointment::where('microsoft_event_id', $eventId)->first();
         if ($existingAppointment) {
+            // Appointment existiert bereits - aktualisiere es (falls sich etwas geändert hat)
+            $this->updateAppointmentFromEvent($existingAppointment, $event);
             return ['meeting' => $existingAppointment->meeting, 'appointments' => 0];
         }
         
@@ -407,24 +418,27 @@ class SyncCalendarEvents extends Command
                 // Erstelle Appointment für User
                 $teamId = $user->currentTeam->id ?? null;
                 
-            // Teams Links aus Event extrahieren
-            $onlineMeeting = $event['onlineMeeting'] ?? null;
-            $teamsJoinUrl = $onlineMeeting['joinUrl'] ?? null;
-            $teamsWebUrl = $onlineMeeting['joinWebUrl'] ?? $onlineMeeting['url'] ?? null;
-            
-            Appointment::create([
-                'meeting_id' => $existingMeeting->id,
-                'user_id' => $user->id,
-                'team_id' => $teamId,
-                'start_date' => $startDateTime,
-                'end_date' => $endDateTime,
-                'location' => $existingMeeting->location,
-                'microsoft_event_id' => $eventId,
-                'microsoft_teams_join_url' => $teamsJoinUrl,
-                'microsoft_teams_web_url' => $teamsWebUrl,
-                'sync_status' => 'synced',
-                'last_synced_at' => now(),
-            ]);
+                // Teams Links aus Event extrahieren
+                $onlineMeeting = $event['onlineMeeting'] ?? null;
+                $teamsJoinUrl = $onlineMeeting['joinUrl'] ?? null;
+                $teamsWebUrl = $onlineMeeting['joinWebUrl'] ?? $onlineMeeting['url'] ?? null;
+                
+                Appointment::create([
+                    'meeting_id' => $existingMeeting->id,
+                    'user_id' => $user->id,
+                    'team_id' => $teamId,
+                    'start_date' => $startDateTime,
+                    'end_date' => $endDateTime,
+                    'location' => $existingMeeting->location,
+                    'microsoft_event_id' => $eventId,
+                    'microsoft_teams_join_url' => $teamsJoinUrl,
+                    'microsoft_teams_web_url' => $teamsWebUrl,
+                    'sync_status' => 'synced',
+                    'last_synced_at' => now(),
+                ]);
+            } else {
+                // Appointment existiert - aktualisiere es
+                $this->updateAppointmentFromEvent($existingAppointment, $event);
             }
             
             return ['meeting' => $existingMeeting, 'appointments' => 0];
@@ -665,9 +679,141 @@ class SyncCalendarEvents extends Command
             }
         }
     }
-                'error' => $e->getMessage(),
-            ]);
-            throw $e;
+
+    /**
+     * Aktualisiert ein Meeting mit Daten aus einem Event
+     */
+    protected function updateMeetingFromEvent(Meeting $meeting, array $event): void
+    {
+        $updateData = [];
+        
+        // Titel aktualisieren (falls geändert)
+        if (isset($event['subject']) && $event['subject'] !== $meeting->title) {
+            $updateData['title'] = $event['subject'];
+        }
+        
+        // Beschreibung aktualisieren
+        $newDescription = $event['body']['content'] ?? $event['bodyPreview'] ?? null;
+        if ($newDescription !== $meeting->description) {
+            $updateData['description'] = $newDescription;
+        }
+        
+        // Location aktualisieren
+        $newLocation = $event['location']['displayName'] ?? $event['location']['locationUri'] ?? null;
+        if ($newLocation !== $meeting->location) {
+            $updateData['location'] = $newLocation;
+        }
+        
+        // Teams Links aktualisieren
+        $onlineMeeting = $event['onlineMeeting'] ?? null;
+        $teamsJoinUrl = $onlineMeeting['joinUrl'] ?? null;
+        $teamsWebUrl = $onlineMeeting['joinWebUrl'] ?? $onlineMeeting['url'] ?? null;
+        
+        if ($teamsJoinUrl !== $meeting->microsoft_teams_join_url) {
+            $updateData['microsoft_teams_join_url'] = $teamsJoinUrl;
+        }
+        if ($teamsWebUrl !== $meeting->microsoft_teams_web_url) {
+            $updateData['microsoft_teams_web_url'] = $teamsWebUrl;
+        }
+        
+        if (!empty($updateData)) {
+            $meeting->update($updateData);
+        }
+    }
+
+    /**
+     * Aktualisiert ein Appointment mit Daten aus einem Event
+     */
+    protected function updateAppointmentFromEvent(Appointment $appointment, array $event): void
+    {
+        $updateData = [];
+        
+        // Datum/Zeit aktualisieren (falls geändert)
+        $startDateTime = Carbon::parse($event['start']['dateTime']);
+        $endDateTime = Carbon::parse($event['end']['dateTime']);
+        
+        if ($startDateTime->format('Y-m-d H:i:s') !== $appointment->start_date->format('Y-m-d H:i:s')) {
+            $updateData['start_date'] = $startDateTime;
+        }
+        if ($endDateTime->format('Y-m-d H:i:s') !== $appointment->end_date->format('Y-m-d H:i:s')) {
+            $updateData['end_date'] = $endDateTime;
+        }
+        
+        // Location aktualisieren (falls geändert)
+        $newLocation = $event['location']['displayName'] ?? $event['location']['locationUri'] ?? null;
+        if ($newLocation !== $appointment->location) {
+            $updateData['location'] = $newLocation;
+        }
+        
+        // Teams Links aktualisieren
+        $onlineMeeting = $event['onlineMeeting'] ?? null;
+        $teamsJoinUrl = $onlineMeeting['joinUrl'] ?? null;
+        $teamsWebUrl = $onlineMeeting['joinWebUrl'] ?? $onlineMeeting['url'] ?? null;
+        
+        if ($teamsJoinUrl !== $appointment->microsoft_teams_join_url) {
+            $updateData['microsoft_teams_join_url'] = $teamsJoinUrl;
+        }
+        if ($teamsWebUrl !== $appointment->microsoft_teams_web_url) {
+            $updateData['microsoft_teams_web_url'] = $teamsWebUrl;
+        }
+        
+        // Sync-Status aktualisieren
+        $updateData['sync_status'] = 'synced';
+        $updateData['last_synced_at'] = now();
+        
+        if (!empty($updateData)) {
+            $appointment->update($updateData);
+        }
+    }
+
+    /**
+     * Aktualisiert ein Series Meeting mit Daten aus einem Event
+     */
+    protected function updateSeriesMeetingFromEvent(Meeting $meeting, array $event): void
+    {
+        // Basis-Update (wie bei einzelnen Events)
+        $this->updateMeetingFromEvent($meeting, $event);
+        
+        // Recurrence Pattern aktualisieren (falls geändert)
+        $recurrence = $event['recurrence'] ?? null;
+        if ($recurrence) {
+            $pattern = $recurrence['pattern'] ?? [];
+            $range = $recurrence['range'] ?? [];
+            
+            $updateData = [];
+            
+            $recurrenceType = strtolower($pattern['type'] ?? '');
+            if ($recurrenceType !== $meeting->recurrence_type) {
+                $updateData['recurrence_type'] = $recurrenceType;
+            }
+            
+            $recurrenceInterval = $pattern['interval'] ?? 1;
+            if ($recurrenceInterval !== $meeting->recurrence_interval) {
+                $updateData['recurrence_interval'] = $recurrenceInterval;
+            }
+            
+            $recurrenceDaysOfWeek = $pattern['daysOfWeek'] ?? null;
+            if ($recurrenceDaysOfWeek !== $meeting->recurrence_days_of_week) {
+                $updateData['recurrence_days_of_week'] = $recurrenceDaysOfWeek;
+            }
+            
+            if (!empty($range['startDate'])) {
+                $recurrenceStartDate = Carbon::parse($range['startDate'])->toDateString();
+                if ($recurrenceStartDate !== $meeting->recurrence_start_date?->toDateString()) {
+                    $updateData['recurrence_start_date'] = $recurrenceStartDate;
+                }
+            }
+            
+            if (!empty($range['endDate'])) {
+                $recurrenceEndDate = Carbon::parse($range['endDate'])->toDateString();
+                if ($recurrenceEndDate !== $meeting->recurrence_end_date?->toDateString()) {
+                    $updateData['recurrence_end_date'] = $recurrenceEndDate;
+                }
+            }
+            
+            if (!empty($updateData)) {
+                $meeting->update($updateData);
+            }
         }
     }
 
