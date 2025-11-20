@@ -94,14 +94,21 @@ class MicrosoftGraphCalendarService
     protected function saveToken(User $user, string $token, ?string $refreshToken = null, ?int $expiresIn = null): void
     {
         try {
+            // Prüfe ob bereits ein Token existiert und behalte dessen Scopes
+            $existingToken = \Platform\Core\Models\MicrosoftOAuthToken::where('user_id', $user->id)->first();
+            $scopes = $existingToken?->scopes ?? [
+                'User.Read',
+                'Calendars.ReadWrite',
+                'Calendars.ReadWrite.Shared',
+            ];
+            
             \Platform\Core\Models\MicrosoftOAuthToken::updateOrCreate(
                 ['user_id' => $user->id],
                 [
                     'access_token' => $token,
-                    'refresh_token' => $refreshToken,
+                    'refresh_token' => $refreshToken ?? $existingToken?->refresh_token,
                     'expires_at' => $expiresIn ? now()->addSeconds($expiresIn) : null,
-                    // TODO: Calendar-Scopes am Montag wieder hinzufügen
-                    'scopes' => ['User.Read'],
+                    'scopes' => $scopes,
                 ]
             );
         } catch (\Throwable $e) {
@@ -137,8 +144,11 @@ class MicrosoftGraphCalendarService
                 'client_secret' => $clientSecret,
                 'refresh_token' => $tokenModel->refresh_token,
                 'grant_type' => 'refresh_token',
-                // TODO: Calendar-Scopes am Montag wieder hinzufügen
-                'scope' => 'https://graph.microsoft.com/User.Read',
+                'scope' => implode(' ', [
+                    'https://graph.microsoft.com/User.Read',
+                    'https://graph.microsoft.com/Calendars.ReadWrite',
+                    'https://graph.microsoft.com/Calendars.ReadWrite.Shared',
+                ]),
             ]);
 
             if (!$response->successful()) {
