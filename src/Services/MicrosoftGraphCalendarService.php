@@ -107,7 +107,7 @@ class MicrosoftGraphCalendarService
                 [
                     'access_token' => $token,
                     'refresh_token' => $refreshToken ?? $existingToken?->refresh_token,
-                    'expires_at' => $expiresIn ? now()->addSeconds($expiresIn) : null,
+                    'expires_at' => $expiresIn ? now()->addSeconds($expiresIn) : ($existingToken?->expires_at ?? now()->addHour()),
                     'scopes' => $scopes,
                 ]
             );
@@ -144,11 +144,7 @@ class MicrosoftGraphCalendarService
                 'client_secret' => $clientSecret,
                 'refresh_token' => $tokenModel->refresh_token,
                 'grant_type' => 'refresh_token',
-                'scope' => implode(' ', [
-                    'https://graph.microsoft.com/User.Read',
-                    'https://graph.microsoft.com/Calendars.ReadWrite',
-                    'https://graph.microsoft.com/Calendars.ReadWrite.Shared',
-                ]),
+                'scope' => 'offline_access https://graph.microsoft.com/.default',
             ]);
 
             if (!$response->successful()) {
@@ -162,7 +158,7 @@ class MicrosoftGraphCalendarService
 
             $data = $response->json();
             $newAccessToken = $data['access_token'] ?? null;
-            $newRefreshToken = $data['refresh_token'] ?? $tokenModel->refresh_token; // Falls kein neuer Refresh Token, alten behalten
+            $newRefreshToken = $data['refresh_token'] ?? $tokenModel->refresh_token;
             $expiresIn = $data['expires_in'] ?? 3600;
 
             if (!$newAccessToken) {
