@@ -507,7 +507,7 @@ class Meeting extends Component
         // Appointments laden
         $appointments = $this->meeting->appointments()
             ->with('user')
-            ->orderBy('created_at', 'desc')
+            ->orderBy('start_date')
             ->get();
 
         // Meeting-Participants für Appointment-Erstellung (nur Beteiligte)

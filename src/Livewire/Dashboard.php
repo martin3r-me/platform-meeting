@@ -13,14 +13,16 @@ class Dashboard extends Component
         $user = Auth::user();
         $team = $user->currentTeam;
 
-        // Upcoming Meetings (gefiltert über Appointments)
+        $now = now();
+
+        // Upcoming Meetings (future only, sort by nächster Termin)
         $upcomingMeetings = Meeting::where('team_id', $team->id)
-            ->whereHas('appointments', function ($query) {
-                $query->where('start_date', '>=', now());
+            ->whereHas('appointments', function ($query) use ($now) {
+                $query->where('start_date', '>=', $now);
             })
             ->where('status', '!=', 'cancelled')
-            ->with(['appointments' => function ($query) {
-                $query->orderBy('start_date');
+            ->with(['appointments' => function ($query) use ($now) {
+                $query->where('start_date', '>=', $now)->orderBy('start_date');
             }])
             ->get()
             ->sortBy(function ($meeting) {
@@ -44,16 +46,16 @@ class Dashboard extends Component
                 return $firstAppointment ? $firstAppointment->start_date : now()->addYear();
             });
 
-        // My Meetings (where user is participant, gefiltert über Appointments)
+        // My Meetings (where user is participant, gefiltert auf zukünftige Termine)
         $myMeetings = Meeting::whereHas('participants', function ($query) use ($user) {
             $query->where('user_id', $user->id);
         })
-            ->whereHas('appointments', function ($query) {
-                $query->where('start_date', '>=', now());
+            ->whereHas('appointments', function ($query) use ($now) {
+                $query->where('start_date', '>=', $now);
             })
             ->where('status', '!=', 'cancelled')
-            ->with(['appointments' => function ($query) {
-                $query->orderBy('start_date');
+            ->with(['appointments' => function ($query) use ($now) {
+                $query->where('start_date', '>=', $now)->orderBy('start_date');
             }])
             ->get()
             ->sortBy(function ($meeting) {

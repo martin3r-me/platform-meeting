@@ -12,22 +12,22 @@
                 <div class="space-y-2">
                     @foreach($todayMeetings as $meeting)
                         <a href="{{ route('meetings.show', $meeting) }}" class="block p-4 rounded-lg border border-[var(--ui-border)] hover:bg-[var(--ui-muted-5)] transition-colors">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h3 class="font-medium">{{ $meeting->title }}</h3>
+                        @php
+                            $nextAppointment = $meeting->appointments->first();
+                        @endphp
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <h3 class="font-medium truncate">{{ $meeting->title }}</h3>
+                                @if($nextAppointment)
                                     <p class="text-sm text-[var(--ui-muted)]">
-                                        @php
-                                            $organizerAppointment = $meeting->appointments()->where('user_id', $meeting->user_id)->first();
-                                        @endphp
-                                        @if($organizerAppointment)
-                                            {{ $organizerAppointment->start_date->format('H:i') }} - {{ $organizerAppointment->end_date->format('H:i') }}
-                                        @endif
+                                        {{ $nextAppointment->start_date->format('H:i') }} - {{ $nextAppointment->end_date->format('H:i') }}
                                     </p>
-                                </div>
-                                @if($meeting->location)
-                                    <span class="text-sm text-[var(--ui-muted)]">{{ $meeting->location }}</span>
                                 @endif
                             </div>
+                            @if($meeting->location)
+                                <span class="text-xs text-[var(--ui-muted)] truncate">{{ $meeting->location }}</span>
+                            @endif
+                        </div>
                         </a>
                     @endforeach
                 </div>
@@ -40,20 +40,20 @@
             <div class="space-y-2">
                 @forelse($upcomingMeetings as $meeting)
                     <a href="{{ route('meetings.show', $meeting) }}" class="block p-4 rounded-lg border border-[var(--ui-border)] hover:bg-[var(--ui-muted-5)] transition-colors">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h3 class="font-medium">{{ $meeting->title }}</h3>
-                                <p class="text-sm text-[var(--ui-muted)]">
-                                    @php
-                                        $organizerAppointment = $meeting->appointments()->where('user_id', $meeting->user_id)->first();
-                                    @endphp
-                                    @if($organizerAppointment)
-                                        {{ $organizerAppointment->start_date->format('d.m.Y H:i') }} - {{ $organizerAppointment->end_date->format('H:i') }}
-                                    @endif
-                                </p>
+                        @php
+                            $nextAppointment = $meeting->appointments->first();
+                        @endphp
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <h3 class="font-medium truncate">{{ $meeting->title }}</h3>
+                                @if($nextAppointment)
+                                    <p class="text-sm text-[var(--ui-muted)]">
+                                        {{ $nextAppointment->start_date->format('d.m.Y H:i') }} - {{ $nextAppointment->end_date->format('H:i') }}
+                                    </p>
+                                @endif
                             </div>
                             @if($meeting->location)
-                                <span class="text-sm text-[var(--ui-muted)]">{{ $meeting->location }}</span>
+                                <span class="text-xs text-[var(--ui-muted)] truncate">{{ $meeting->location }}</span>
                             @endif
                         </div>
                     </a>
@@ -69,17 +69,17 @@
             <div class="space-y-2">
                 @forelse($myMeetings as $meeting)
                     <a href="{{ route('meetings.show', $meeting) }}" class="block p-4 rounded-lg border border-[var(--ui-border)] hover:bg-[var(--ui-muted-5)] transition-colors">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h3 class="font-medium">{{ $meeting->title }}</h3>
-                                <p class="text-sm text-[var(--ui-muted)]">
-                                    @php
-                                        $organizerAppointment = $meeting->appointments()->where('user_id', $meeting->user_id)->first();
-                                    @endphp
-                                    @if($organizerAppointment)
-                                        {{ $organizerAppointment->start_date->format('d.m.Y H:i') }} - {{ $organizerAppointment->end_date->format('H:i') }}
-                                    @endif
-                                </p>
+                        @php
+                            $nextAppointment = $meeting->appointments->first();
+                        @endphp
+                        <div class="flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <h3 class="font-medium truncate">{{ $meeting->title }}</h3>
+                                @if($nextAppointment)
+                                    <p class="text-sm text-[var(--ui-muted)]">
+                                        {{ $nextAppointment->start_date->format('d.m.Y H:i') }} - {{ $nextAppointment->end_date->format('H:i') }}
+                                    </p>
+                                @endif
                             </div>
                         </div>
                     </a>
