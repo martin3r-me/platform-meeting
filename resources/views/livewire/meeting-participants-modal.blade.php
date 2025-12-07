@@ -10,15 +10,15 @@
                             <div class="flex items-center space-x-3">
                                 @if($participant->user)
                                     @if($participant->user->avatar ?? null)
-                                        <img src="{{ $participant->user->avatar }}" alt="{{ $participant->user->name }}" class="w-8 h-8 rounded-full object-cover">
+                                        <img src="{{ $participant->user->avatar }}" alt="{{ $participant->user->name }}" class="w-6 h-6 rounded-full object-cover">
                                     @else
-                                        <div class="w-8 h-8 bg-[var(--ui-primary-5)] text-[var(--ui-primary)] rounded-full flex items-center justify-center text-sm font-medium">
+                                        <div class="w-6 h-6 bg-[var(--ui-primary-5)] text-[var(--ui-primary)] rounded-full flex items-center justify-center text-[11px] font-medium">
                                             {{ substr($participant->user->name ?? '?', 0, 1) }}
                                         </div>
                                     @endif
                                 @else
                                     {{-- Externer Teilnehmer --}}
-                                    <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded-full flex items-center justify-center text-sm font-medium">
+                                    <div class="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded-full flex items-center justify-center text-[11px] font-medium">
                                         {{ substr($participant->name ?? $participant->email ?? '?', 0, 1) }}
                                     </div>
                                 @endif
@@ -82,9 +82,9 @@
                             <div class="flex items-center justify-between p-3 rounded-lg border border-[var(--ui-border)]/60 bg-[var(--ui-surface)]">
                                 <div class="flex items-center space-x-3">
                                     @if($user->avatar ?? null)
-                                        <img src="{{ $user->avatar }}" alt="{{ $user->name }}" class="w-8 h-8 rounded-full object-cover">
+                                        <img src="{{ $user->avatar }}" alt="{{ $user->name }}" class="w-6 h-6 rounded-full object-cover">
                                     @else
-                                        <div class="w-8 h-8 bg-[var(--ui-primary-5)] text-[var(--ui-primary)] rounded-full flex items-center justify-center text-sm font-medium">
+                                        <div class="w-6 h-6 bg-[var(--ui-primary-5)] text-[var(--ui-primary)] rounded-full flex items-center justify-center text-[11px] font-medium">
                                             {{ substr($user->name, 0, 1) }}
                                         </div>
                                     @endif

@@ -245,9 +245,9 @@
                         <li class="relative flex gap-x-4 py-4 hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded-lg transition-colors group">
                             {{-- Avatar --}}
                             @if($appointment->user->avatar ?? null)
-                                <img src="{{ $appointment->user->avatar }}" alt="{{ $appointment->user->name }}" class="size-8 flex-none rounded-full dark:outline dark:-outline-offset-1 dark:outline-white/10" />
+                                        <img src="{{ $appointment->user->avatar }}" alt="{{ $appointment->user->name }}" class="size-6 flex-none rounded-full dark:outline dark:-outline-offset-1 dark:outline-white/10" />
                             @else
-                                <div class="size-8 flex-none rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-300 dark:outline dark:-outline-offset-1 dark:outline-white/10">
+                                        <div class="size-6 flex-none rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-medium text-gray-600 dark:text-gray-300 dark:outline dark:-outline-offset-1 dark:outline-white/10">
                                     {{ strtoupper(substr($appointment->user->name ?? '?', 0, 1)) }}
                                 </div>
                             @endif
