@@ -177,8 +177,8 @@ class Meeting extends Component
             'context_id' => $this->meeting->id,
             'linked_contexts' => [],
             'allow_time_entry' => true,
-            'allow_context_management' => false,
-            'can_link_to_entity' => false,
+            'allow_entities' => false,
+            'allow_dimensions' => false,
         ]);
 
         // KeyResult-Kontext setzen - ermöglicht Verknüpfung von KeyResults mit diesem Meeting

@@ -8,14 +8,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Symfony\Component\Uid\UuidV7;
 use Illuminate\Support\Facades\Auth;
 use Platform\ActivityLog\Traits\LogsActivity;
-use Platform\Media\Traits\HasMedia;
 use Platform\Core\Contracts\HasDisplayName;
 use Platform\Core\Contracts\HasTimeAncestors;
 use Platform\Core\Contracts\HasKeyResultAncestors;
 
 class Meeting extends Model implements HasDisplayName, HasTimeAncestors, HasKeyResultAncestors
 {
-    use HasFactory, SoftDeletes, LogsActivity, HasMedia;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $table = 'meetings_meetings';
 
