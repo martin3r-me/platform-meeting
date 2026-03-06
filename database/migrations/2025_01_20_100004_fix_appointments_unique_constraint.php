@@ -8,6 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Prüfe ob Tabelle existiert (wird möglicherweise später erstellt)
+        if (!Schema::hasTable('meetings_appointments')) {
+            return;
+        }
+        
         $connection = Schema::getConnection();
         $databaseName = $connection->getDatabaseName();
         
@@ -103,6 +108,11 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Prüfe ob Tabelle existiert
+        if (!Schema::hasTable('meetings_appointments')) {
+            return;
+        }
+        
         Schema::table('meetings_appointments', function (Blueprint $table) {
             $table->dropUnique('meetings_appointments_microsoft_event_id_unique');
             $table->dropUnique('meetings_appointments_meeting_user_start_unique');
