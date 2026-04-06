@@ -36,6 +36,14 @@ return new class extends Migration
             ");
         }
 
+        // Drop foreign key on recurring_meeting_id first (MySQL requires this before dropping the column)
+        Schema::table('meetings_meetings', function (Blueprint $table) {
+            $allColumns = Schema::getColumnListing('meetings_meetings');
+            if (in_array('recurring_meeting_id', $allColumns)) {
+                $table->dropForeign(['recurring_meeting_id']);
+            }
+        });
+
         // Drop MS365 and recurrence columns
         Schema::table('meetings_meetings', function (Blueprint $table) {
             $columns = [];
