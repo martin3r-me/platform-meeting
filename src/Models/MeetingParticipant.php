@@ -14,16 +14,9 @@ class MeetingParticipant extends Model
     protected $fillable = [
         'meeting_id',
         'user_id',
-        'email', // Für externe Teilnehmer ohne User-Account
-        'name', // Für externe Teilnehmer ohne User-Account
+        'email',
+        'name',
         'role',
-        'response_status',
-        'response_time',
-        'microsoft_attendee_id',
-    ];
-
-    protected $casts = [
-        'response_time' => 'datetime',
     ];
 
     public function meeting()
@@ -44,7 +37,7 @@ class MeetingParticipant extends Model
         if ($this->user) {
             return $this->user->fullname ?? $this->user->name;
         }
-        
+
         return $this->name ?? $this->email ?? 'Unbekannt';
     }
 
@@ -56,4 +49,3 @@ class MeetingParticipant extends Model
         return empty($this->user_id) && !empty($this->email);
     }
 }
-

@@ -17,7 +17,6 @@
                                         </div>
                                     @endif
                                 @else
-                                    {{-- Externer Teilnehmer --}}
                                     <div class="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded-full flex items-center justify-center text-[11px] font-medium">
                                         {{ substr($participant->name ?? $participant->email ?? '?', 0, 1) }}
                                     </div>
@@ -37,24 +36,10 @@
                                     <x-ui-badge variant="info" size="xs">Extern</x-ui-badge>
                                 @endif
                             </div>
-                            
+
                             <div class="flex items-center space-x-2">
-                                @php
-                                    $statusColors = [
-                                        'accepted' => 'success',
-                                        'declined' => 'danger',
-                                        'tentative' => 'warning',
-                                        'notResponded' => 'muted',
-                                    ];
-                                    $statusColor = $statusColors[$participant->response_status] ?? 'muted';
-                                @endphp
-                                <x-ui-badge :variant="$statusColor" size="xs">
-                                    {{ ucfirst(str_replace('_', ' ', $participant->response_status)) }}
-                                </x-ui-badge>
-                                
-                                {{-- Teilnehmer entfernen --}}
                                 @if($participant->user_id != $meeting->user_id)
-                                    <button 
+                                    <button
                                         wire:click="removeParticipant({{ $participant->user_id }})"
                                         class="text-red-500 hover:text-red-700 text-sm px-2 py-1 rounded hover:bg-red-50 transition-colors"
                                         title="Entfernen"
@@ -67,15 +52,15 @@
                     @endforeach
                 </div>
             </div>
-            
+
             {{-- Neuen Teilnehmer hinzufügen --}}
             <div class="border-t pt-4">
                 <h4 class="text-md font-medium mb-3">Teilnehmer hinzufügen</h4>
-                
+
                 @php
                     $availableUsers = $this->getAvailableUsers();
                 @endphp
-                
+
                 @if($availableUsers->count() > 0)
                     <div class="space-y-2">
                         @foreach($availableUsers as $user)
@@ -105,7 +90,7 @@
             </div>
         </div>
     @endif
-    
+
     <x-slot name="footer">
         <div class="flex items-center justify-end gap-2">
             <x-ui-button variant="secondary-outline" size="sm" wire:click="closeModal">
@@ -114,4 +99,3 @@
         </div>
     </x-slot>
 </x-ui-modal>
-

@@ -27,6 +27,23 @@ return [
                     'route' => 'meetings.create',
                     'icon'  => 'heroicon-o-plus',
                 ],
+                [
+                    'label' => 'Serie erstellen',
+                    'route' => 'meetings.series.create',
+                    'icon'  => 'heroicon-o-arrow-path',
+                ],
+            ],
+        ],
+        [
+            'group' => 'Serien',
+            'dynamic' => [
+                'model'     => \Platform\Meetings\Models\MeetingSeries::class,
+                'team_based' => true,
+                'order_by'  => 'title',
+                'route'     => 'meetings.series.show',
+                'icon'      => 'heroicon-o-arrow-path',
+                'label_key' => 'title',
+                'filter'    => ['is_active' => true],
             ],
         ],
         [
@@ -68,4 +85,3 @@ return [
         ],
     ]
 ];
-

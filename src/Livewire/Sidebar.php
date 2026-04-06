@@ -5,6 +5,7 @@ namespace Platform\Meetings\Livewire;
 use Livewire\Component;
 use Illuminate\Support\Facades\Auth;
 use Platform\Meetings\Models\Meeting;
+use Platform\Meetings\Models\MeetingSeries;
 
 class Sidebar extends Component
 {
@@ -16,28 +17,25 @@ class Sidebar extends Component
         if (!$team) {
             return view('meetings::livewire.sidebar', [
                 'meetings' => collect(),
+                'series' => collect(),
             ]);
         }
 
-        // Meetings des Teams (gefiltert über Appointments)
         $meetings = Meeting::where('team_id', $team->id)
-            ->whereHas('appointments', function ($query) {
-                $query->where('start_date', '>=', now());
-            })
+            ->where('start_date', '>=', now())
             ->where('status', '!=', 'cancelled')
-            ->with(['appointments' => function ($query) {
-                $query->orderBy('start_date');
-            }])
-            ->get()
-            ->sortBy(function ($meeting) {
-                $firstAppointment = $meeting->appointments->first();
-                return $firstAppointment ? $firstAppointment->start_date : now()->addYear();
-            })
-            ->take(20);
+            ->orderBy('start_date')
+            ->take(20)
+            ->get();
+
+        $series = MeetingSeries::where('team_id', $team->id)
+            ->where('is_active', true)
+            ->orderBy('title')
+            ->get();
 
         return view('meetings::livewire.sidebar', [
             'meetings' => $meetings,
+            'series' => $series,
         ]);
     }
 }
-

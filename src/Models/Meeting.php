@@ -21,31 +21,18 @@ class Meeting extends Model implements HasDisplayName, HasKeyResultAncestors
         'uuid',
         'user_id',
         'team_id',
-        'recurring_meeting_id',
+        'meeting_series_id',
         'title',
         'description',
-        'location', // Standard-Location (kann in Appointment überschrieben werden)
+        'location',
         'status',
-        'microsoft_event_id',
-        'microsoft_series_master_id',
-        'is_series_instance',
-        'microsoft_online_meeting_id',
-        'microsoft_teams_join_url', // Teams Join-Link
-        'microsoft_teams_web_url', // Teams Web-URL
-        // Recurrence-Pattern (von Microsoft Graph API)
-        'recurrence_type', // daily, weekly, monthly, yearly
-        'recurrence_interval', // z.B. 1 = jede Woche, 2 = alle 2 Wochen
-        'recurrence_days_of_week', // ['monday', 'wednesday'] für weekly
-        'recurrence_start_date', // Wann startet die Serie
-        'recurrence_end_date', // Wann endet die Serie (optional)
+        'start_date',
+        'end_date',
     ];
 
     protected $casts = [
-        'is_series_instance' => 'boolean',
-        'recurrence_start_date' => 'date',
-        'recurrence_end_date' => 'date',
-        'recurrence_days_of_week' => 'array',
-        'recurrence_interval' => 'integer',
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -77,9 +64,9 @@ class Meeting extends Model implements HasDisplayName, HasKeyResultAncestors
         return $this->belongsTo(\Platform\Core\Models\Team::class);
     }
 
-    public function recurringMeeting()
+    public function series()
     {
-        return $this->belongsTo(RecurringMeeting::class, 'recurring_meeting_id');
+        return $this->belongsTo(MeetingSeries::class, 'meeting_series_id');
     }
 
     public function participants()
@@ -87,11 +74,14 @@ class Meeting extends Model implements HasDisplayName, HasKeyResultAncestors
         return $this->hasMany(MeetingParticipant::class);
     }
 
-    // Agenda gehört jetzt zu Appointments, nicht mehr direkt zu Meetings
-
-    public function appointments()
+    public function agendaItems()
     {
-        return $this->hasMany(Appointment::class);
+        return $this->hasMany(MeetingAgendaItem::class)->orderBy('order');
+    }
+
+    public function notes()
+    {
+        return $this->hasMany(MeetingNote::class)->orderBy('created_at', 'desc');
     }
 
     public function getDisplayName(): ?string
@@ -100,46 +90,11 @@ class Meeting extends Model implements HasDisplayName, HasKeyResultAncestors
     }
 
     /**
-     * Prüft ob es ein Raum ist
+     * Prüft ob es ein Serientermin ist
      */
-    public function isRoom(): bool
+    public function isRecurring(): bool
     {
-        if (empty($this->location)) {
-            return false;
-        }
-        
-        // Wenn es ein Teams Call ist, ist es kein Raum
-        if ($this->isTeamsCall()) {
-            return false;
-        }
-        
-        // Wenn es eine URL ist (z.B. Zoom, Google Meet), ist es kein Raum
-        if (filter_var($this->location, FILTER_VALIDATE_URL)) {
-            return false;
-        }
-        
-        // Ansonsten ist es wahrscheinlich ein Raum
-        return true;
-    }
-
-    /**
-     * Prüft ob es ein Online-Meeting ist (Teams, Zoom, etc.)
-     */
-    public function isOnlineMeeting(): bool
-    {
-        if ($this->isTeamsCall()) {
-            return true;
-        }
-        
-        if (empty($this->location)) {
-            return false;
-        }
-        
-        $location = strtolower($this->location);
-        return str_contains($location, 'zoom') ||
-               str_contains($location, 'google meet') ||
-               str_contains($location, 'webex') ||
-               filter_var($this->location, FILTER_VALIDATE_URL);
+        return !empty($this->meeting_series_id);
     }
 
     /**
@@ -147,112 +102,44 @@ class Meeting extends Model implements HasDisplayName, HasKeyResultAncestors
      */
     public function getLocationType(): string
     {
-        if ($this->isTeamsCall()) {
+        if (empty($this->location)) {
+            return 'other';
+        }
+
+        $location = strtolower($this->location);
+
+        if (str_contains($location, 'teams') || str_contains($location, 'microsoft teams')) {
             return 'teams';
         }
-        
-        if ($this->isOnlineMeeting()) {
+
+        if (filter_var($this->location, FILTER_VALIDATE_URL) ||
+            str_contains($location, 'zoom') ||
+            str_contains($location, 'google meet') ||
+            str_contains($location, 'webex')) {
             return 'online';
         }
-        
-        if ($this->isRoom()) {
-            return 'room';
-        }
-        
-        return 'other';
+
+        return 'room';
     }
 
     /**
-     * Prüft ob es ein Serientermin ist
+     * Prüft ob es ein Online-Meeting ist
      */
-    public function isRecurring(): bool
+    public function isOnlineMeeting(): bool
     {
-        return !empty($this->recurring_meeting_id) 
-            || $this->is_series_instance 
-            || !empty($this->microsoft_series_master_id)
-            || !empty($this->recurrence_type);
+        return in_array($this->getLocationType(), ['teams', 'online']);
     }
-    
+
     /**
-     * Prüft ob es ein Teams Call ist (aktualisiert mit Teams Link)
+     * Prüft ob es ein Raum ist
      */
-    public function isTeamsCall(): bool
+    public function isRoom(): bool
     {
-        return !empty($this->microsoft_online_meeting_id) 
-            || !empty($this->microsoft_teams_join_url)
-            || !empty($this->microsoft_teams_web_url)
-            || (str_contains(strtolower($this->location ?? ''), 'teams') ||
-                str_contains(strtolower($this->location ?? ''), 'microsoft teams'));
+        return $this->getLocationType() === 'room';
     }
 
-    /**
-     * Gibt das Recurrence Pattern als lesbaren Text zurück
-     */
-    public function getRecurrencePatternText(): ?string
-    {
-        if (!$this->recurrence_type) {
-            return null;
-        }
-
-        $typeLabels = [
-            'daily' => 'Täglich',
-            'weekly' => 'Wöchentlich',
-            'monthly' => 'Monatlich',
-            'yearly' => 'Jährlich',
-        ];
-
-        $type = $typeLabels[strtolower($this->recurrence_type)] ?? ucfirst($this->recurrence_type);
-        
-        $interval = $this->recurrence_interval ?? 1;
-        if ($interval > 1) {
-            $type = "Alle {$interval} " . strtolower($type);
-        }
-
-        // Wochentage für weekly
-        if ($this->recurrence_type === 'weekly' && !empty($this->recurrence_days_of_week)) {
-            $dayLabels = [
-                'monday' => 'Mo',
-                'tuesday' => 'Di',
-                'wednesday' => 'Mi',
-                'thursday' => 'Do',
-                'friday' => 'Fr',
-                'saturday' => 'Sa',
-                'sunday' => 'So',
-            ];
-            
-            $days = array_map(function($day) use ($dayLabels) {
-                return $dayLabels[strtolower($day)] ?? ucfirst($day);
-            }, $this->recurrence_days_of_week);
-            
-            $type .= ' (' . implode(', ', $days) . ')';
-        }
-
-        return $type;
-    }
-
-    /**
-     * Gibt den Teams Join-Link zurück (falls vorhanden)
-     * Für Serien: Link ist beim Meeting (gilt für alle Instanzen)
-     * Für einzelne Events: Link ist beim Meeting
-     */
-    public function getTeamsJoinUrl(): ?string
-    {
-        return $this->microsoft_teams_join_url 
-            ?? $this->microsoft_teams_web_url
-            ?? null;
-    }
-
-    /**
-     * Gibt alle Vorfahren-Kontexte für die KeyResult-Kaskade zurück.
-     * Meeting → Meeting selbst (als Root)
-     * 
-     * Wenn direkt auf Meeting-Level KeyResults verknüpft werden, ist das Meeting selbst der Root-Kontext.
-     */
     public function keyResultAncestors(): array
     {
-        // Bei Meetings ist das Meeting selbst der Root-Kontext
-        // Wir geben ein leeres Array zurück, da das Meeting selbst bereits als context_type/context_id gesetzt ist
         return [];
     }
 }
-

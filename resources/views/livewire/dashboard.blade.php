@@ -8,25 +8,50 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h1 class="text-xl font-semibold text-[var(--ui-secondary)]">Meetings</h1>
-                    <p class="text-sm text-[var(--ui-muted)]">Kommende Termine als Liste</p>
+                    <p class="text-sm text-[var(--ui-muted)]">Kommende Termine und Serien</p>
                 </div>
             </div>
+
+            {{-- Serien --}}
+            @if($series->isNotEmpty())
+                <div class="space-y-4">
+                    <h3 class="text-sm font-semibold text-[var(--ui-secondary)]">Aktive Serien</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                        @foreach($series as $s)
+                            <a href="{{ route('meetings.series.show', $s) }}"
+                               class="flex flex-col gap-2 p-4 rounded-lg border border-[var(--ui-border)]/60 bg-white hover:bg-[var(--ui-muted-5)] transition">
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2">
+                                        @svg('heroicon-o-arrow-path', 'w-4 h-4 text-[var(--ui-primary)]')
+                                        <span class="font-medium text-[var(--ui-secondary)] truncate">{{ $s->title }}</span>
+                                    </div>
+                                    <x-ui-badge variant="primary" size="xs">{{ $s->getRecurrencePatternText() }}</x-ui-badge>
+                                </div>
+                                @if($s->next_meeting_date)
+                                    <div class="text-xs text-[var(--ui-muted)]">
+                                        Nächstes Meeting: {{ $s->next_meeting_date->format('d.m.Y') }}
+                                    </div>
+                                @endif
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
 
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 <div class="space-y-4">
                     <h3 class="text-sm font-semibold text-[var(--ui-secondary)]">Heute</h3>
                     <div class="space-y-3">
-                        @forelse($todayAppointments as $appointment)
-                            @php $meeting = $appointment->meeting; @endphp
+                        @forelse($todayMeetings as $meeting)
                             <a href="{{ route('meetings.show', $meeting) }}"
                                class="block p-4 rounded-lg border border-[var(--ui-border)]/60 bg-white hover:bg-[var(--ui-muted-5)] transition">
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="min-w-0">
                                         <div class="font-medium text-[var(--ui-secondary)] truncate">{{ $meeting->title }}</div>
                                         <div class="text-xs text-[var(--ui-muted)]">
-                                            {{ $appointment->start_date->format('H:i') }} – {{ $appointment->end_date->format('H:i') }}
+                                            {{ $meeting->start_date->format('H:i') }} – {{ $meeting->end_date->format('H:i') }}
                                             @if($meeting->location)
-                                                • {{ Str::limit($meeting->location, 50) }}
+                                                &bull; {{ Str::limit($meeting->location, 50) }}
                                             @endif
                                         </div>
                                     </div>
@@ -46,17 +71,16 @@
                 <div class="space-y-4">
                     <h3 class="text-sm font-semibold text-[var(--ui-secondary)]">Meine Meetings (nächste 45 Tage)</h3>
                     <div class="space-y-3">
-                        @forelse($myAppointments as $appointment)
-                            @php $meeting = $appointment->meeting; @endphp
+                        @forelse($myMeetings as $meeting)
                             <a href="{{ route('meetings.show', $meeting) }}"
                                class="block p-4 rounded-lg border border-[var(--ui-border)]/60 bg-white hover:bg-[var(--ui-muted-5)] transition">
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="min-w-0">
                                         <div class="font-medium text-[var(--ui-secondary)] truncate">{{ $meeting->title }}</div>
                                         <div class="text-xs text-[var(--ui-muted)]">
-                                            {{ $appointment->start_date->format('d.m.Y H:i') }} – {{ $appointment->end_date->format('H:i') }}
+                                            {{ $meeting->start_date->format('d.m.Y H:i') }} – {{ $meeting->end_date->format('H:i') }}
                                             @if($meeting->location)
-                                                • {{ Str::limit($meeting->location, 50) }}
+                                                &bull; {{ Str::limit($meeting->location, 50) }}
                                             @endif
                                         </div>
                                     </div>
@@ -77,13 +101,12 @@
             <div class="space-y-4">
                 <h3 class="text-sm font-semibold text-[var(--ui-secondary)]">Demnächst (Team, 45 Tage)</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-                    @forelse($upcomingAppointments as $appointment)
-                        @php $meeting = $appointment->meeting; @endphp
+                    @forelse($upcomingMeetings as $meeting)
                         <a href="{{ route('meetings.show', $meeting) }}"
                            class="flex flex-col gap-2 p-4 rounded-lg border border-[var(--ui-border)]/60 bg-white hover:bg-[var(--ui-muted-5)] transition">
                             <div class="flex items-center justify-between gap-2">
                                 <div class="text-xs font-semibold text-[var(--ui-primary)]">
-                                    {{ $appointment->start_date->format('d.m.Y') }}
+                                    {{ $meeting->start_date->format('d.m.Y') }}
                                 </div>
                                 @if($meeting->location)
                                     <div class="text-[10px] text-[var(--ui-muted)] truncate">
@@ -93,7 +116,7 @@
                             </div>
                             <div class="font-medium text-[var(--ui-secondary)] truncate">{{ $meeting->title }}</div>
                             <div class="text-xs text-[var(--ui-muted)]">
-                                {{ $appointment->start_date->format('H:i') }} – {{ $appointment->end_date->format('H:i') }}
+                                {{ $meeting->start_date->format('H:i') }} – {{ $meeting->end_date->format('H:i') }}
                             </div>
                         </a>
                     @empty
@@ -106,4 +129,3 @@
         </div>
     </x-ui-page-container>
 </x-ui-page>
-

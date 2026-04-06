@@ -13,8 +13,7 @@ class MeetingAgendaItem extends Model
 
     protected $fillable = [
         'meeting_id',
-        'appointment_id',
-        'agenda_slot_id',
+        'type',
         'assigned_to_id',
         'title',
         'description',
@@ -28,19 +27,8 @@ class MeetingAgendaItem extends Model
         return $this->belongsTo(Meeting::class);
     }
 
-    public function appointment()
-    {
-        return $this->belongsTo(\Platform\Meetings\Models\Appointment::class);
-    }
-
-    public function agendaSlot()
-    {
-        return $this->belongsTo(MeetingAgendaSlot::class, 'agenda_slot_id');
-    }
-
     public function assignedTo()
     {
         return $this->belongsTo(\Platform\Core\Models\User::class, 'assigned_to_id');
     }
 }
-

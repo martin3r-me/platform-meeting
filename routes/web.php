@@ -2,20 +2,12 @@
 
 use Platform\Meetings\Livewire\Dashboard;
 use Platform\Meetings\Livewire\Meeting;
-use Platform\Meetings\Livewire\Appointment;
-use Platform\Meetings\Livewire\AgendaItem;
 use Platform\Meetings\Livewire\CreateMeeting;
-use Platform\Meetings\Models\Meeting as MeetingModel;
+use Platform\Meetings\Livewire\CreateSeries;
+use Platform\Meetings\Livewire\MeetingSeriesView;
 
 Route::get('/', Dashboard::class)->name('meetings.dashboard');
 Route::get('/create', CreateMeeting::class)->name('meetings.create');
-
-Route::get('/meetings/{meeting}', Meeting::class)
-    ->name('meetings.show');
-
-Route::get('/appointments/{appointment}', Appointment::class)
-    ->name('meetings.appointments.show');
-
-Route::get('/agenda-items/{agendaItem}', AgendaItem::class)
-    ->name('meetings.agenda-items.show');
-
+Route::get('/series/create', CreateSeries::class)->name('meetings.series.create');
+Route::get('/series/{meetingSeries}', MeetingSeriesView::class)->name('meetings.series.show');
+Route::get('/meetings/{meeting}', Meeting::class)->name('meetings.show');

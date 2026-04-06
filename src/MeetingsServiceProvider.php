@@ -5,15 +5,14 @@ namespace Platform\Meetings;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Platform\Core\PlatformCore;
 use Platform\Core\Routing\ModuleRouter;
 use Platform\Meetings\Models\Meeting;
-use Platform\Meetings\Models\Appointment;
+use Platform\Meetings\Models\MeetingSeries;
 use Platform\Meetings\Policies\MeetingPolicy;
-use Platform\Meetings\Policies\AppointmentPolicy;
+use Platform\Meetings\Policies\MeetingSeriesPolicy;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
@@ -24,8 +23,6 @@ class MeetingsServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 \Platform\Meetings\Console\Commands\GenerateRecurringMeetings::class,
-                \Platform\Meetings\Console\Commands\RenewCalendarSubscriptions::class,
-                \Platform\Meetings\Console\Commands\SyncCalendarEvents::class,
             ]);
         }
     }
@@ -41,6 +38,7 @@ class MeetingsServiceProvider extends ServiceProvider
             PlatformCore::registerModule([
                 'key'        => 'meetings',
                 'title'      => 'Meetings',
+                'group'      => 'content',
                 'routing'    => config('meetings.routing'),
                 'guard'      => config('meetings.guard'),
                 'navigation' => config('meetings.navigation'),
@@ -58,11 +56,6 @@ class MeetingsServiceProvider extends ServiceProvider
             ModuleRouter::group('meetings', function () {
                 $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
             });
-
-            // Webhook Route (ohne Modul-Prefix)
-            Route::post('/meetings/webhook/microsoft-calendar', 
-                \Platform\Meetings\Http\Controllers\MicrosoftCalendarWebhookController::class
-            )->name('meetings.webhook.microsoft-calendar');
         }
 
         // Config veröffentlichen & zusammenführen
@@ -119,7 +112,7 @@ class MeetingsServiceProvider extends ServiceProvider
     {
         $policies = [
             Meeting::class => MeetingPolicy::class,
-            Appointment::class => AppointmentPolicy::class,
+            MeetingSeries::class => MeetingSeriesPolicy::class,
         ];
 
         foreach ($policies as $model => $policy) {
@@ -129,4 +122,3 @@ class MeetingsServiceProvider extends ServiceProvider
         }
     }
 }
-

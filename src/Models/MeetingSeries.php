@@ -9,11 +9,11 @@ use Symfony\Component\Uid\UuidV7;
 use Illuminate\Support\Facades\Auth;
 use Platform\ActivityLog\Traits\LogsActivity;
 
-class RecurringMeeting extends Model
+class MeetingSeries extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
-    protected $table = 'meetings_recurring_meetings';
+    protected $table = 'meetings_series';
 
     protected $fillable = [
         'uuid',
@@ -21,21 +21,23 @@ class RecurringMeeting extends Model
         'team_id',
         'title',
         'description',
+        'location',
         'start_time',
         'end_time',
-        'location',
         'recurrence_type',
-        'recurrence_interval',
-        'recurrence_end_date',
-        'next_meeting_date',
+        'recurrence_day_of_week',
+        'recurrence_day_of_month',
         'is_active',
-        'microsoft_series_master_id',
+        'next_meeting_date',
+        'recurrence_end_date',
     ];
 
     protected $casts = [
         'recurrence_end_date' => 'date',
         'next_meeting_date' => 'datetime',
         'is_active' => 'boolean',
+        'recurrence_day_of_week' => 'integer',
+        'recurrence_day_of_month' => 'integer',
     ];
 
     protected static function booted(): void
@@ -53,10 +55,6 @@ class RecurringMeeting extends Model
 
             if (! $model->team_id) {
                 $model->team_id = Auth::user()->currentTeam->id ?? null;
-            }
-
-            if (! $model->recurrence_interval) {
-                $model->recurrence_interval = 1;
             }
 
             if ($model->is_active === null) {
@@ -77,7 +75,7 @@ class RecurringMeeting extends Model
 
     public function meetings()
     {
-        return $this->hasMany(Meeting::class, 'recurring_meeting_id');
+        return $this->hasMany(Meeting::class, 'meeting_series_id');
     }
 
     /**
@@ -87,32 +85,27 @@ class RecurringMeeting extends Model
     {
         $startDate = $this->next_meeting_date->copy();
         $startDate->setTimeFromTimeString($this->start_time);
-        
+
         $endDate = $this->next_meeting_date->copy();
         $endDate->setTimeFromTimeString($this->end_time);
 
-        // Meeting erstellen (ohne konkrete Daten - die kommen in Appointments)
         $meeting = Meeting::create([
             'user_id' => $this->user_id,
             'team_id' => $this->team_id,
-            'recurring_meeting_id' => $this->id,
+            'meeting_series_id' => $this->id,
             'title' => $this->title,
             'description' => $this->description,
             'location' => $this->location,
             'status' => 'planned',
-            'is_series_instance' => true,
-            'microsoft_series_master_id' => $this->microsoft_series_master_id,
-        ]);
-
-        // Appointment für Organizer erstellen (mit konkreten Daten)
-        \Platform\Meetings\Models\Appointment::create([
-            'meeting_id' => $meeting->id,
-            'user_id' => $this->user_id,
-            'team_id' => $this->team_id,
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'location' => $this->location,
-            'sync_status' => 'pending',
+        ]);
+
+        // Organizer als Participant hinzufügen
+        MeetingParticipant::create([
+            'meeting_id' => $meeting->id,
+            'user_id' => $this->user_id,
+            'role' => 'organizer',
         ]);
 
         $this->calculateNextMeetingDate();
@@ -133,11 +126,12 @@ class RecurringMeeting extends Model
         $current = $this->next_meeting_date;
 
         $this->next_meeting_date = match($this->recurrence_type) {
-            'daily' => $current->copy()->addDays($this->recurrence_interval),
-            'weekly' => $current->copy()->addWeeks($this->recurrence_interval),
-            'monthly' => $current->copy()->addMonths($this->recurrence_interval),
-            'yearly' => $current->copy()->addYears($this->recurrence_interval),
-            default => $current->copy()->addDay(),
+            'weekly' => $current->copy()->addWeek(),
+            'biweekly' => $current->copy()->addWeeks(2),
+            'monthly' => $current->copy()->addMonth(),
+            'quarterly' => $current->copy()->addMonths(3),
+            'yearly' => $current->copy()->addYear(),
+            default => $current->copy()->addWeek(),
         };
     }
 
@@ -163,9 +157,6 @@ class RecurringMeeting extends Model
 
     /**
      * Erstellt alle fehlenden Meetings bis zu einem bestimmten Datum
-     * 
-     * @param \Carbon\Carbon $untilDate Bis zu diesem Datum werden Meetings erstellt
-     * @return array Array von erstellten Meetings
      */
     public function createMeetingsUntil(\Carbon\Carbon $untilDate): array
     {
@@ -177,7 +168,6 @@ class RecurringMeeting extends Model
         $currentDate = $this->next_meeting_date ? $this->next_meeting_date->copy()->startOfDay() : now()->startOfDay();
         $untilDate = $untilDate->copy()->endOfDay();
 
-        // Prüfe, welche Meetings bereits existieren (nur Datum, nicht Uhrzeit)
         $existingDates = $this->meetings()
             ->where('start_date', '>=', $currentDate)
             ->where('start_date', '<=', $untilDate)
@@ -186,31 +176,25 @@ class RecurringMeeting extends Model
             ->unique()
             ->toArray();
 
-        // Erstelle Meetings bis zum Enddatum
-        $maxIterations = 1000; // Sicherheit gegen Endlosschleifen
+        $maxIterations = 1000;
         $iteration = 0;
 
         while ($currentDate->lte($untilDate) && $iteration < $maxIterations) {
             $iteration++;
 
-            // Prüfe ob Recurrence-Enddatum erreicht
             if ($this->recurrence_end_date && $currentDate->isAfter($this->recurrence_end_date)) {
                 break;
             }
 
-            // Prüfe ob Meeting bereits existiert (nur Datum-Vergleich)
             $dateKey = $currentDate->format('Y-m-d');
             if (!in_array($dateKey, $existingDates)) {
-                // Temporär next_meeting_date setzen für createMeeting()
                 $this->next_meeting_date = $currentDate->copy();
-                
+
                 $meeting = $this->createMeeting();
                 $createdMeetings[] = $meeting;
-                
-                // next_meeting_date wird in createMeeting() bereits aktualisiert
+
                 $currentDate = $this->next_meeting_date->copy()->startOfDay();
             } else {
-                // Nächstes Datum berechnen (ohne Meeting zu erstellen)
                 $tempDate = $currentDate->copy();
                 $this->next_meeting_date = $tempDate;
                 $this->calculateNextMeetingDate();
@@ -218,10 +202,28 @@ class RecurringMeeting extends Model
             }
         }
 
-        // next_meeting_date speichern
         $this->save();
 
         return $createdMeetings;
     }
-}
 
+    /**
+     * Gibt das Recurrence Pattern als lesbaren Text zurück
+     */
+    public function getRecurrencePatternText(): ?string
+    {
+        if (!$this->recurrence_type) {
+            return null;
+        }
+
+        $typeLabels = [
+            'weekly' => 'Wöchentlich',
+            'biweekly' => 'Alle 2 Wochen',
+            'monthly' => 'Monatlich',
+            'quarterly' => 'Vierteljährlich',
+            'yearly' => 'Jährlich',
+        ];
+
+        return $typeLabels[$this->recurrence_type] ?? ucfirst($this->recurrence_type);
+    }
+}
