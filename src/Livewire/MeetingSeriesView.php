@@ -17,6 +17,37 @@ class MeetingSeriesView extends Component
         $this->authorize('view', $this->meetingSeries);
     }
 
+    public function rendered()
+    {
+        $this->dispatch('comms', [
+            'model' => get_class($this->meetingSeries),
+            'modelId' => $this->meetingSeries->id,
+            'subject' => $this->meetingSeries->title,
+            'description' => $this->meetingSeries->description ?? '',
+            'url' => route('meetings.series.show', $this->meetingSeries),
+            'source' => 'meetings.series.view',
+            'recipients' => [],
+            'meta' => [
+                'recurrence_type' => $this->meetingSeries->recurrence_type,
+                'next_meeting_date' => $this->meetingSeries->next_meeting_date,
+            ],
+        ]);
+
+        $this->dispatch('organization', [
+            'context_type' => get_class($this->meetingSeries),
+            'context_id' => $this->meetingSeries->id,
+            'linked_contexts' => [],
+            'allow_time_entry' => true,
+            'allow_entities' => false,
+            'allow_dimensions' => false,
+        ]);
+
+        $this->dispatch('keyresult', [
+            'context_type' => get_class($this->meetingSeries),
+            'context_id' => $this->meetingSeries->id,
+        ]);
+    }
+
     public function toggleActive()
     {
         $this->authorize('update', $this->meetingSeries);
