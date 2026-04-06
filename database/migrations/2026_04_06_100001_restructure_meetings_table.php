@@ -9,11 +9,20 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Guard: only add columns if they don't exist yet (idempotent for partial migration retry)
         Schema::table('meetings_meetings', function (Blueprint $table) {
-            $table->dateTime('start_date')->nullable()->after('status');
-            $table->dateTime('end_date')->nullable()->after('start_date');
-            $table->foreignId('meeting_series_id')->nullable()->after('team_id')
-                ->constrained('meetings_series')->nullOnDelete();
+            $allColumns = Schema::getColumnListing('meetings_meetings');
+
+            if (!in_array('start_date', $allColumns)) {
+                $table->dateTime('start_date')->nullable()->after('status');
+            }
+            if (!in_array('end_date', $allColumns)) {
+                $table->dateTime('end_date')->nullable()->after('status');
+            }
+            if (!in_array('meeting_series_id', $allColumns)) {
+                $table->foreignId('meeting_series_id')->nullable()->after('team_id')
+                    ->constrained('meetings_series')->nullOnDelete();
+            }
         });
 
         // Datenmigration: start_date/end_date vom ersten Appointment kopieren
