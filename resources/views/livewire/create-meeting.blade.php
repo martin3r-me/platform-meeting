@@ -3,6 +3,13 @@
         <x-ui-page-navbar title="Meeting erstellen" icon="heroicon-o-plus" />
     </x-slot>
 
+    <x-slot name="actionbar">
+        <x-ui-page-actionbar :breadcrumbs="[
+            ['label' => 'Meetings', 'href' => route('meetings.dashboard'), 'icon' => 'calendar-days'],
+            ['label' => 'Meeting erstellen'],
+        ]" />
+    </x-slot>
+
     <x-ui-page-container spacing="space-y-6">
         <div class="bg-white rounded-xl border border-[var(--ui-border)]/60 shadow-sm overflow-hidden">
             <div class="p-6 lg:p-8">

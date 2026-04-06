@@ -3,46 +3,32 @@
         <x-ui-page-navbar :title="$meetingSeries->title" icon="heroicon-o-arrow-path" />
     </x-slot>
 
+    <x-slot name="actionbar">
+        <x-ui-page-actionbar :breadcrumbs="[
+            ['label' => 'Meetings', 'href' => route('meetings.dashboard'), 'icon' => 'calendar-days'],
+            ['label' => $meetingSeries->title],
+        ]">
+            <x-slot name="left">
+                @can('update', $meetingSeries)
+                    <x-ui-button variant="ghost" size="sm" wire:click="generateMeetings">
+                        @svg('heroicon-o-plus-circle', 'w-4 h-4')
+                        <span>Meetings generieren</span>
+                    </x-ui-button>
+                    <x-ui-button variant="ghost" size="sm" wire:click="toggleActive">
+                        @svg($meetingSeries->is_active ? 'heroicon-o-pause' : 'heroicon-o-play', 'w-4 h-4')
+                        <span>{{ $meetingSeries->is_active ? 'Pausieren' : 'Aktivieren' }}</span>
+                    </x-ui-button>
+                @endcan
+            </x-slot>
+            @can('delete', $meetingSeries)
+                <x-ui-confirm-button action="deleteSeries" text="Löschen" confirmText="Wirklich?" variant="danger" size="sm" />
+            @endcan
+        </x-ui-page-actionbar>
+    </x-slot>
+
     <x-slot name="sidebar">
         <x-ui-page-sidebar title="Serie" width="w-80" :defaultOpen="true">
             <div class="p-6 space-y-6">
-                {{-- Aktionen --}}
-                <div>
-                    <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider mb-4">Aktionen</h3>
-                    <div class="space-y-2">
-                        <x-ui-button variant="secondary-outline" size="sm" :href="route('meetings.dashboard')" wire:navigate class="w-full">
-                            <span class="flex items-center gap-2">
-                                @svg('heroicon-o-home', 'w-4 h-4')
-                                Zum Dashboard
-                            </span>
-                        </x-ui-button>
-                        @can('update', $meetingSeries)
-                            <x-ui-button variant="primary" size="sm" wire:click="generateMeetings" class="w-full">
-                                <span class="flex items-center gap-2">
-                                    @svg('heroicon-o-plus-circle', 'w-4 h-4')
-                                    Meetings generieren (3 Monate)
-                                </span>
-                            </x-ui-button>
-                            <x-ui-button variant="{{ $meetingSeries->is_active ? 'warning' : 'success' }}" size="sm" wire:click="toggleActive" class="w-full">
-                                <span class="flex items-center gap-2">
-                                    @svg($meetingSeries->is_active ? 'heroicon-o-pause' : 'heroicon-o-play', 'w-4 h-4')
-                                    {{ $meetingSeries->is_active ? 'Serie pausieren' : 'Serie aktivieren' }}
-                                </span>
-                            </x-ui-button>
-                        @endcan
-                        @can('delete', $meetingSeries)
-                            <x-ui-confirm-button
-                                action="deleteSeries"
-                                text="Löschen"
-                                confirmText="Wirklich löschen?"
-                                variant="danger"
-                                :icon="@svg('heroicon-o-trash', 'w-4 h-4')->toHtml()"
-                                class="w-full"
-                            />
-                        @endcan
-                    </div>
-                </div>
-
                 {{-- Details --}}
                 <div>
                     <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider mb-4">Details</h3>

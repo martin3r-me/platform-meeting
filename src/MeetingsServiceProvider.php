@@ -72,6 +72,9 @@ class MeetingsServiceProvider extends ServiceProvider
 
         // Policies registrieren
         $this->registerPolicies();
+
+        // Tools registrieren (für AI/Chat)
+        $this->registerTools();
     }
 
     protected function registerLivewireComponents(): void
@@ -105,6 +108,21 @@ class MeetingsServiceProvider extends ServiceProvider
             $alias = $prefix . '.' . $aliasPath;
 
             Livewire::component($alias, $class);
+        }
+    }
+
+    protected function registerTools(): void
+    {
+        try {
+            $registry = resolve(\Platform\Core\Tools\ToolRegistry::class);
+            $registry->register(new \Platform\Meetings\Tools\MeetingsOverviewTool());
+            $registry->register(new \Platform\Meetings\Tools\ListSeriesTool());
+            $registry->register(new \Platform\Meetings\Tools\CreateSeriesTool());
+            $registry->register(new \Platform\Meetings\Tools\ListMeetingsTool());
+            $registry->register(new \Platform\Meetings\Tools\CreateMeetingTool());
+            $registry->register(new \Platform\Meetings\Tools\GetMeetingTool());
+        } catch (\Throwable $e) {
+            \Log::warning('Meetings: Tool-Registrierung fehlgeschlagen', ['error' => $e->getMessage()]);
         }
     }
 

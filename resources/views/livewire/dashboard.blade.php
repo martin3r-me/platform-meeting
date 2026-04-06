@@ -3,15 +3,19 @@
         <x-ui-page-navbar title="Meetings" icon="heroicon-o-calendar-days" />
     </x-slot>
 
+    <x-slot name="actionbar">
+        <x-ui-page-actionbar :breadcrumbs="[
+            ['label' => 'Meetings', 'icon' => 'calendar-days'],
+        ]">
+            <x-ui-button variant="primary" size="sm" :href="route('meetings.series.create')" wire:navigate>
+                @svg('heroicon-o-plus', 'w-4 h-4')
+                <span>Serie erstellen</span>
+            </x-ui-button>
+        </x-ui-page-actionbar>
+    </x-slot>
+
     <x-ui-page-container>
         <div class="space-y-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-xl font-semibold text-[var(--ui-secondary)]">Meetings</h1>
-                    <p class="text-sm text-[var(--ui-muted)]">Kommende Termine und Serien</p>
-                </div>
-            </div>
-
             {{-- Serien --}}
             @if($series->isNotEmpty())
                 <div class="space-y-4">

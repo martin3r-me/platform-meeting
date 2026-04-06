@@ -3,32 +3,29 @@
         <x-ui-page-navbar :title="$meeting->title" icon="heroicon-o-video-camera" />
     </x-slot>
 
+    <x-slot name="actionbar">
+        <x-ui-page-actionbar :breadcrumbs="array_filter([
+            ['label' => 'Meetings', 'href' => route('meetings.dashboard'), 'icon' => 'calendar-days'],
+            $meeting->series ? ['label' => $meeting->series->title, 'href' => route('meetings.series.show', $meeting->series)] : null,
+            ['label' => Str::limit($meeting->title, 40)],
+        ])">
+            <x-slot name="left">
+                @can('update', $meeting)
+                    <button type="button" @click="$dispatch('open-modal-meeting-participants', { meetingId: {{ $meeting->id }} })" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md text-[var(--ui-secondary)] hover:bg-[var(--ui-muted-5)]">
+                        @svg('heroicon-o-user-plus', 'w-4 h-4')
+                        <span>Teilnehmer</span>
+                    </button>
+                @endcan
+            </x-slot>
+            @can('delete', $meeting)
+                <x-ui-confirm-button action="deleteMeeting" text="Löschen" confirmText="Wirklich?" variant="danger" size="sm" />
+            @endcan
+        </x-ui-page-actionbar>
+    </x-slot>
+
     <x-slot name="sidebar">
         <x-ui-page-sidebar title="Übersicht" width="w-80" :defaultOpen="true">
             <div class="p-6 space-y-6">
-                {{-- Aktionen --}}
-                <div>
-                    <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider mb-4">Aktionen</h3>
-                    <div class="space-y-2">
-                        <x-ui-button variant="secondary-outline" size="sm" :href="route('meetings.dashboard')" wire:navigate class="w-full">
-                            <span class="flex items-center gap-2">
-                                @svg('heroicon-o-home', 'w-4 h-4')
-                                Zum Dashboard
-                            </span>
-                        </x-ui-button>
-                        @can('delete', $meeting)
-                            <x-ui-confirm-button
-                                action="deleteMeeting"
-                                text="Löschen"
-                                confirmText="Wirklich löschen?"
-                                variant="danger"
-                                :icon="@svg('heroicon-o-trash', 'w-4 h-4')->toHtml()"
-                                class="w-full"
-                            />
-                        @endcan
-                    </div>
-                </div>
-
                 {{-- Details --}}
                 <div>
                     <h3 class="text-sm font-bold text-[var(--ui-secondary)] uppercase tracking-wider mb-4">Details</h3>
