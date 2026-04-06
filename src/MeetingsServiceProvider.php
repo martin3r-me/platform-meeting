@@ -40,7 +40,7 @@ class MeetingsServiceProvider extends ServiceProvider
             PlatformCore::registerModule([
                 'key'        => 'meetings',
                 'title'      => 'Meetings',
-                'group'      => 'content',
+                'group'      => 'planner',
                 'routing'    => config('meetings.routing'),
                 'guard'      => config('meetings.guard'),
                 'navigation' => config('meetings.navigation'),
