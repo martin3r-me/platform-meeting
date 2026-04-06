@@ -20,6 +20,8 @@ class MeetingsServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->mergeConfigFrom(__DIR__.'/../config/meetings.php', 'meetings');
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 \Platform\Meetings\Console\Commands\GenerateRecurringMeetings::class,
@@ -58,12 +60,10 @@ class MeetingsServiceProvider extends ServiceProvider
             });
         }
 
-        // Config veröffentlichen & zusammenführen
+        // Config veröffentlichen
         $this->publishes([
             __DIR__.'/../config/meetings.php' => config_path('meetings.php'),
         ], 'config');
-
-        $this->mergeConfigFrom(__DIR__.'/../config/meetings.php', 'meetings');
 
         // Migrations, Views, Livewire-Komponenten
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
