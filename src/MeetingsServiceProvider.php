@@ -2,6 +2,7 @@
 
 namespace Platform\Meetings;
 
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Gate;
@@ -31,6 +32,22 @@ class MeetingsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Meeting als linkbares Objekt am Org-Baum (Phase C).
+        Relation::morphMap([
+            'meeting' => Meeting::class,
+        ]);
+
+        // Meeting-Instanz als Wissens-Quelle am Knoten registrieren. Soft-
+        // gekoppelt: ohne Organization-Modul No-op.
+        try {
+            if (class_exists(\Platform\Organization\Services\EntityLinkRegistry::class)) {
+                resolve(\Platform\Organization\Services\EntityLinkRegistry::class)
+                    ->register(new \Platform\Meetings\Organization\MeetingsEntityLinkProvider());
+            }
+        } catch (\Throwable $e) {
+            // Organization-Modul nicht geladen — Meeting-Wissen aggregiert dann nicht.
+        }
+
         // Modul-Registrierung
         if (
             config()->has('meetings.routing') &&
@@ -121,6 +138,7 @@ class MeetingsServiceProvider extends ServiceProvider
             $registry->register(new \Platform\Meetings\Tools\ListMeetingsTool());
             $registry->register(new \Platform\Meetings\Tools\CreateMeetingTool());
             $registry->register(new \Platform\Meetings\Tools\GetMeetingTool());
+            $registry->register(new \Platform\Meetings\Tools\PromoteFromInboxTool());
         } catch (\Throwable $e) {
             \Log::warning('Meetings: Tool-Registrierung fehlgeschlagen', ['error' => $e->getMessage()]);
         }

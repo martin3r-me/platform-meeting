@@ -22,6 +22,7 @@ class Meeting extends Model implements HasDisplayName, HasKeyResultAncestors
         'user_id',
         'team_id',
         'meeting_series_id',
+        'series_master_id',
         'title',
         'description',
         'location',
