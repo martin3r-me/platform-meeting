@@ -40,11 +40,17 @@ class MeetingPromotionService
                 ->first();
         }
 
+        $icalUid = $item->ical_uid ?? null;
         $seriesMasterId = $item->series_master_id ?? null;
 
-        // find-or-create: eine Instanz pro Serie.
+        // find-or-create: EINE geteilte Instanz pro realem Termin. Bevorzugt über
+        // iCalUId (über Beteiligte UND Vorkommen stabil) — der erste, der einklinkt,
+        // legt sie an, alle weiteren docken an dieselbe. Fallback: series_master_id.
         $meeting = null;
-        if ($seriesMasterId && Schema::hasColumn('meetings_meetings', 'series_master_id')) {
+        if ($icalUid && Schema::hasColumn('meetings_meetings', 'ical_uid')) {
+            $meeting = Meeting::where('ical_uid', $icalUid)->first();
+        }
+        if (! $meeting && $seriesMasterId && Schema::hasColumn('meetings_meetings', 'series_master_id')) {
             $meeting = Meeting::where('series_master_id', $seriesMasterId)->first();
         }
 
@@ -53,6 +59,9 @@ class MeetingPromotionService
             $meeting->team_id = $item->team_id;
             $meeting->user_id = $item->user_id;
             $meeting->series_master_id = $seriesMasterId;
+            if (Schema::hasColumn('meetings_meetings', 'ical_uid')) {
+                $meeting->ical_uid = $icalUid;
+            }
             $meeting->title = $session->subject ?? $item->subject ?? 'Meeting';
             $meeting->description = $session->body_preview ?? null;
             $meeting->location = $session->location ?? null;
@@ -62,13 +71,18 @@ class MeetingPromotionService
             $meeting->save();
         }
 
-        // Backlink: dieses Vorkommen — und bei Serien alle weiteren offenen
-        // Vorkommen derselben Serie — an die Instanz binden.
+        // Backlink: dieses Vorkommen + alle weiteren offenen Vorkommen desselben
+        // Termins (gleicher Nutzer, gleiche Identität) an die Instanz binden.
+        // Inbox ist user-scoped; die Sicht anderer Beteiligter folgt über
+        // Mitgliedschaft (Increment 2), nicht über Fremd-Backlinks.
         DB::table('inbox_items')->where('id', $item->id)->update(['meeting_id' => $meeting->id]);
-        if ($seriesMasterId) {
+
+        $identityCol = $icalUid ? 'ical_uid' : ($seriesMasterId ? 'series_master_id' : null);
+        $identityVal = $icalUid ?: $seriesMasterId;
+        if ($identityCol) {
             DB::table('inbox_items')
-                ->where('team_id', $item->team_id)
-                ->where('series_master_id', $seriesMasterId)
+                ->where('user_id', $item->user_id)
+                ->where($identityCol, $identityVal)
                 ->whereNull('meeting_id')
                 ->update(['meeting_id' => $meeting->id]);
         }
