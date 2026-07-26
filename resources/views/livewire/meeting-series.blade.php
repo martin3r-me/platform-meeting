@@ -10,18 +10,18 @@
         ]">
             <x-slot name="left">
                 @can('update', $meetingSeries)
-                    <x-ui-button variant="ghost" size="sm" wire:click="generateMeetings">
+                    <x-nx-button variant="ghost" size="sm" wire:click="generateMeetings">
                         @svg('heroicon-o-plus-circle', 'w-4 h-4')
                         <span>Meetings generieren</span>
-                    </x-ui-button>
-                    <x-ui-button variant="ghost" size="sm" wire:click="toggleActive">
+                    </x-nx-button>
+                    <x-nx-button variant="ghost" size="sm" wire:click="toggleActive">
                         @svg($meetingSeries->is_active ? 'heroicon-o-pause' : 'heroicon-o-play', 'w-4 h-4')
                         <span>{{ $meetingSeries->is_active ? 'Pausieren' : 'Aktivieren' }}</span>
-                    </x-ui-button>
+                    </x-nx-button>
                 @endcan
             </x-slot>
             @can('delete', $meetingSeries)
-                <x-ui-confirm-button action="deleteSeries" text="Löschen" confirmText="Wirklich?" variant="danger" size="sm" />
+                <x-nx-button wire:click="deleteSeries" wire:confirm="Wirklich?" variant="danger" size="sm">Löschen</x-nx-button>
             @endcan
         </x-ui-page-actionbar>
     </x-slot>
@@ -38,7 +38,7 @@
                                 @svg('heroicon-o-arrow-path', 'w-4 h-4 text-[var(--ui-primary)]')
                                 <span class="text-sm text-[var(--ui-secondary)]">Wiederholung</span>
                             </div>
-                            <x-ui-badge variant="primary" size="sm">{{ $meetingSeries->getRecurrencePatternText() }}</x-ui-badge>
+                            <x-nx-badge variant="info" size="sm">{{ $meetingSeries->getRecurrencePatternText() }}</x-nx-badge>
                         </div>
                         <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
                             <div class="flex items-center gap-2">
@@ -61,9 +61,9 @@
                                 @svg('heroicon-o-check-circle', 'w-4 h-4 text-[var(--ui-primary)]')
                                 <span class="text-sm text-[var(--ui-secondary)]">Status</span>
                             </div>
-                            <x-ui-badge :variant="$meetingSeries->is_active ? 'success' : 'muted'" size="sm">
+                            <x-nx-badge :variant="$meetingSeries->is_active ? 'success' : 'neutral'" size="sm">
                                 {{ $meetingSeries->is_active ? 'Aktiv' : 'Pausiert' }}
-                            </x-ui-badge>
+                            </x-nx-badge>
                         </div>
                         @if($meetingSeries->next_meeting_date)
                             <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
@@ -112,9 +112,9 @@
                                         @endif
                                     </div>
                                 </div>
-                                <x-ui-badge :variant="$meeting->start_date && $meeting->start_date->isPast() ? 'muted' : 'primary'" size="xs">
+                                <x-nx-badge :variant="$meeting->start_date && $meeting->start_date->isPast() ? 'neutral' : 'info'" size="xs">
                                     {{ $meeting->start_date && $meeting->start_date->isPast() ? 'Vergangen' : ucfirst($meeting->status) }}
-                                </x-ui-badge>
+                                </x-nx-badge>
                             </div>
                         </a>
                     @empty
