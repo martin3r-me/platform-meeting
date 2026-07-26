@@ -18,7 +18,7 @@
                 @endcan
             </x-slot>
             @can('delete', $meeting)
-                <x-ui-confirm-button action="deleteMeeting" text="Löschen" confirmText="Wirklich?" variant="danger" size="sm" />
+                <x-nx-button wire:click="deleteMeeting" wire:confirm="Wirklich?" variant="danger" size="sm">Löschen</x-nx-button>
             @endcan
         </x-ui-page-actionbar>
     </x-slot>
@@ -63,7 +63,7 @@
                                     @svg('heroicon-o-arrow-path', 'w-4 h-4 text-[var(--ui-primary)]')
                                     <span class="text-sm text-[var(--ui-secondary)]">Serie</span>
                                 </div>
-                                <x-ui-badge variant="warning" size="xs">{{ $meeting->series->getRecurrencePatternText() }}</x-ui-badge>
+                                <x-nx-badge variant="warning">{{ $meeting->series->getRecurrencePatternText() }}</x-nx-badge>
                             </a>
                         @endif
                         <div class="flex items-start justify-between py-2 px-3 rounded-lg bg-[var(--ui-muted-5)] border border-[var(--ui-border)]/40">
@@ -71,7 +71,7 @@
                                 @svg('heroicon-o-check-circle', 'w-4 h-4 text-[var(--ui-primary)]')
                                 <span class="text-sm text-[var(--ui-secondary)]">Status</span>
                             </div>
-                            <x-ui-badge variant="primary" size="sm">{{ ucfirst($meeting->status) }}</x-ui-badge>
+                            <x-nx-badge variant="accent">{{ ucfirst($meeting->status) }}</x-nx-badge>
                         </div>
                     </div>
                 </div>
@@ -98,10 +98,10 @@
                                     @svg('heroicon-o-user', 'w-4 h-4 text-[var(--ui-muted)]')
                                     <span class="text-sm text-[var(--ui-secondary)]">{{ $participant->display_name }}</span>
                                     @if($participant->isExternal())
-                                        <x-ui-badge variant="muted" size="xs">Extern</x-ui-badge>
+                                        <x-nx-badge variant="neutral">Extern</x-nx-badge>
                                     @endif
                                     @if($participant->role === 'organizer')
-                                        <x-ui-badge variant="primary" size="xs">Organisator</x-ui-badge>
+                                        <x-nx-badge variant="accent">Organisator</x-nx-badge>
                                     @endif
                                 </div>
                             </div>
@@ -237,8 +237,8 @@
                                         </select>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <x-ui-button variant="primary" size="sm" wire:click="saveAgendaItem">Speichern</x-ui-button>
-                                        <x-ui-button variant="secondary-outline" size="sm" wire:click="cancelEditAgendaItem">Abbrechen</x-ui-button>
+                                        <x-nx-button variant="primary" size="sm" wire:click="saveAgendaItem">Speichern</x-nx-button>
+                                        <x-nx-button variant="secondary" size="sm" wire:click="cancelEditAgendaItem">Abbrechen</x-nx-button>
                                     </div>
                                 </div>
                             </div>
@@ -249,7 +249,7 @@
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center gap-2 mb-1">
                                             <span class="font-medium text-[var(--ui-secondary)]">{{ $item->title }}</span>
-                                            <x-ui-badge variant="muted" size="xs">{{ $typeLabels[$item->type] ?? $item->type }}</x-ui-badge>
+                                            <x-nx-badge variant="neutral">{{ $typeLabels[$item->type] ?? $item->type }}</x-nx-badge>
                                             @if($item->duration_minutes)
                                                 <span class="text-xs text-[var(--ui-muted)]">{{ $item->duration_minutes }} Min.</span>
                                             @endif
@@ -301,7 +301,7 @@
                     </div>
                     @if($newNoteContent)
                         <div class="flex items-center gap-2 mt-2">
-                            <x-ui-button variant="primary" size="sm" wire:click="saveNote">Notiz speichern</x-ui-button>
+                            <x-nx-button variant="primary" size="sm" wire:click="saveNote">Notiz speichern</x-nx-button>
                         </div>
                     @endif
                     @error('newNoteContent')
@@ -319,7 +319,7 @@
                                         <span class="text-sm font-medium text-[var(--ui-secondary)]">{{ $note->user->fullname ?? $note->user->name }}</span>
                                         <span class="text-xs text-[var(--ui-muted)]">{{ $note->created_at->diffForHumans() }}</span>
                                         @if($note->is_published)
-                                            <x-ui-badge variant="success" size="xs">Veröffentlicht</x-ui-badge>
+                                            <x-nx-badge variant="success">Veröffentlicht</x-nx-badge>
                                         @endif
                                     </div>
                                     <div class="text-sm text-[var(--ui-secondary)] whitespace-pre-wrap">{{ $note->content }}</div>
