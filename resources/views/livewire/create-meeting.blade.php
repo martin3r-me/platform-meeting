@@ -16,7 +16,7 @@
                 <form wire:submit.prevent="save" onsubmit="return false;">
                     <x-ui-form-grid :cols="1" :gap="6">
                         {{-- Titel --}}
-                        <x-ui-input-text
+                        <x-nx-input-text
                             name="title"
                             label="Titel"
                             wire:model="title"
@@ -26,7 +26,7 @@
                         />
 
                         {{-- Beschreibung --}}
-                        <x-ui-input-textarea
+                        <x-nx-input-textarea
                             name="description"
                             label="Beschreibung"
                             wire:model="description"
@@ -104,7 +104,7 @@
                         </div>
 
                         {{-- Ort --}}
-                        <x-ui-input-text
+                        <x-nx-input-text
                             name="location"
                             label="Ort"
                             wire:model="location"
@@ -146,13 +146,13 @@
 
                         {{-- Buttons --}}
                         <div class="flex items-center gap-3 pt-4 border-t border-[var(--ui-border)]/60">
-                            <x-ui-button type="button" wire:click="save" variant="primary" wire:loading.attr="disabled">
+                            <x-nx-button type="button" wire:click="save" variant="primary" wire:loading.attr="disabled">
                                 <span wire:loading.remove wire:target="save">Meeting erstellen</span>
                                 <span wire:loading wire:target="save">Wird erstellt...</span>
-                            </x-ui-button>
-                            <x-ui-button type="button" variant="secondary" :href="route('meetings.dashboard')" wire:navigate>
+                            </x-nx-button>
+                            <x-nx-button type="button" variant="secondary" :href="route('meetings.dashboard')" wire:navigate>
                                 Abbrechen
-                            </x-ui-button>
+                            </x-nx-button>
                         </div>
 
                         <input type="hidden" wire:model="end_date" />
