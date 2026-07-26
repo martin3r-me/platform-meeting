@@ -17,6 +17,13 @@ class Meeting extends Model implements HasDisplayName, HasKeyResultAncestors
 
     protected $table = 'meetings_meetings';
 
+    // Sichtbarkeits-Konstanten
+    public const VISIBILITY_TEAM = 'team';       // für alle im Team sichtbar
+    public const VISIBILITY_PRIVATE = 'private'; // nur für den Ersteller sichtbar
+
+    // Standard-Sichtbarkeit neuer Meetings
+    public const DEFAULT_VISIBILITY = self::VISIBILITY_TEAM;
+
     protected $fillable = [
         'uuid',
         'user_id',
@@ -28,6 +35,7 @@ class Meeting extends Model implements HasDisplayName, HasKeyResultAncestors
         'description',
         'location',
         'status',
+        'visibility',
         'start_date',
         'end_date',
     ];
@@ -53,7 +61,27 @@ class Meeting extends Model implements HasDisplayName, HasKeyResultAncestors
             if (! $model->team_id) {
                 $model->team_id = Auth::user()->currentTeam->id ?? null;
             }
+
+            if (empty($model->visibility)) {
+                $model->visibility = self::DEFAULT_VISIBILITY;
+            }
         });
+    }
+
+    /**
+     * Prüft ob das Meeting für das ganze Team sichtbar ist
+     */
+    public function isTeamVisible(): bool
+    {
+        return $this->visibility === self::VISIBILITY_TEAM;
+    }
+
+    /**
+     * Prüft ob das Meeting privat (nur Ersteller) ist
+     */
+    public function isPrivate(): bool
+    {
+        return $this->visibility === self::VISIBILITY_PRIVATE;
     }
 
     public function user()
