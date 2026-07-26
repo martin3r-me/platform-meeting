@@ -105,7 +105,6 @@ class CreateMeeting extends Component
             'description' => $this->description,
             'location' => $this->location,
             'status' => 'planned',
-            'visibility' => Meeting::DEFAULT_VISIBILITY,
             'start_date' => $startDate,
             'end_date' => $endDate,
         ]);
