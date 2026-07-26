@@ -7,10 +7,10 @@
         <x-ui-page-actionbar :breadcrumbs="[
             ['label' => 'Meetings', 'icon' => 'calendar-days'],
         ]">
-            <x-ui-button variant="primary" size="sm" :href="route('meetings.series.create')" wire:navigate>
+            <x-nx-button variant="primary" size="sm" :href="route('meetings.series.create')" wire:navigate>
                 @svg('heroicon-o-plus', 'w-4 h-4')
                 <span>Serie erstellen</span>
-            </x-ui-button>
+            </x-nx-button>
         </x-ui-page-actionbar>
     </x-slot>
 
@@ -29,7 +29,7 @@
                                         @svg('heroicon-o-arrow-path', 'w-4 h-4 text-[var(--ui-primary)]')
                                         <span class="font-medium text-[var(--ui-secondary)] truncate">{{ $s->title }}</span>
                                     </div>
-                                    <x-ui-badge variant="primary" size="xs">{{ $s->getRecurrencePatternText() }}</x-ui-badge>
+                                    <x-nx-badge variant="accent">{{ $s->getRecurrencePatternText() }}</x-nx-badge>
                                 </div>
                                 @if($s->next_meeting_date)
                                     <div class="text-xs text-[var(--ui-muted)]">
