@@ -4,7 +4,6 @@ namespace Platform\Meetings;
 
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
@@ -52,7 +51,7 @@ class MeetingsServiceProvider extends ServiceProvider
         if (
             config()->has('meetings.routing') &&
             config()->has('meetings.navigation') &&
-            Schema::hasTable('modules')
+            PlatformCore::modulesTableExists()
         ) {
             PlatformCore::registerModule([
                 'key'        => 'meetings',
