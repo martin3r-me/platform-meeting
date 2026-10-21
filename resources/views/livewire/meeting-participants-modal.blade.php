@@ -22,7 +22,7 @@
                             <div class="flex items-center space-x-3">
                                 @if($participant->user)
                                     @if($participant->user->avatar ?? null)
-                                        <img src="{{ $participant->user->avatar }}" alt="{{ $participant->user->name }}" class="w-6 h-6 rounded-full object-cover">
+                                        <img src="{{ method_exists($participant->user, 'avatarUrl') ? $participant->user->avatarUrl() : $participant->user->avatar }}" loading="lazy" alt="{{ $participant->user->name }}" class="w-6 h-6 rounded-full object-cover">
                                     @else
                                         <div class="w-6 h-6 bg-[color:var(--nx-accent)] text-[color:var(--nx-on-accent)] rounded-full flex items-center justify-center text-[11px] font-medium">
                                             {{ substr($participant->user->name ?? '?', 0, 1) }}
@@ -81,7 +81,7 @@
                             <div class="flex items-center justify-between p-3 rounded-lg border border-[color:var(--nx-line)] bg-[color:var(--nx-surface)]">
                                 <div class="flex items-center space-x-3">
                                     @if($user->avatar ?? null)
-                                        <img src="{{ $user->avatar }}" alt="{{ $user->name }}" class="w-6 h-6 rounded-full object-cover">
+                                        <img src="{{ method_exists($user, 'avatarUrl') ? $user->avatarUrl() : $user->avatar }}" loading="lazy" alt="{{ $user->name }}" class="w-6 h-6 rounded-full object-cover">
                                     @else
                                         <div class="w-6 h-6 bg-[color:var(--nx-accent)] text-[color:var(--nx-on-accent)] rounded-full flex items-center justify-center text-[11px] font-medium">
                                             {{ substr($user->name, 0, 1) }}
