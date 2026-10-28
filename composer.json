@@ -1,16 +1,5 @@
 {
   "name": "martin3r/platform-meetings",
-  "autoload": {
-    "psr-4": {
-      "Platform\\Meetings\\": "src/"
-    }
-  },
-  "extra": {
-    "laravel": {
-      "providers": [
-        "Platform\\Meetings\\MeetingsServiceProvider"
-      ]
-    }
-  }
+  "description": "Aufgelöst: Termin lebt als Inbox-Item im Eingang (home), Ist-Zeit bucht auf inbox_item (inbox). Dieses Paket ist ein leerer Grabstein — kein ServiceProvider, keine Klassen. Aus der Instanz-composer.json entfernen.",
+  "license": "proprietary"
 }
-
