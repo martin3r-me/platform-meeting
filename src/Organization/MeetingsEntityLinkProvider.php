@@ -50,7 +50,15 @@ class MeetingsEntityLinkProvider implements EntityLinkProvider, HasMetricDefinit
     }
 
     /**
-     * Meetings tragen keine Zeit — die läuft über die Inbox-Items (Phase A).
+     * ABGESCHALTET (Phase 2 der Meetings-Auflösung): Die Ist-Zeit hängt jetzt am
+     * Inbox-Item (context_type = InboxItem, siehe InboxEntityLinkProvider +
+     * MaterializeMeetingTimeCommand). Dieser Cascade MUSS leer bleiben, solange der
+     * inbox_item-Cascade aktiv ist — sonst zählt ein Knoten mit beiden Links
+     * (meeting UND inbox_item) dieselbe Zeit doppelt.
+     *
+     * Historische Meeting-Buchungen migriert `inbox:migrate-meeting-time-to-item`
+     * aufs Item. Model/Tabelle bleiben nur noch, bis diese Migration produktiv
+     * verifiziert ist — danach fällt das Paket ganz weg (Phase 3).
      */
     public function timeTrackableCascades(): array
     {
